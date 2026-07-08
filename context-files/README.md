@@ -1,0 +1,44 @@
+# context-files/
+
+Context files used to restore full project state in any AI session.
+Paste the current version at the start of any new conversation.
+
+## Current file
+
+  leadpilot_context-v001.md     Active — use this one
+
+## Versioning convention
+
+Versions increment by 0001 per update: v0001 → v0002 → v0003...
+
+When updating: save a new file with the incremented version number.
+Never overwrite the current version — always create a new file.
+
+## How to use
+
+1. Open a new AI chat (Claude, GPT, Gemini, etc.)
+2. Paste the entire contents of leadpilot_context-v001.md
+3. The AI has full context on what LeadPilot is, its tools, the
+   system prompt, blast radius/security posture, MVP scope, and open
+   decisions
+
+## When to create a new version
+
+- After a major planning session that changes decisions
+- After completing a build phase
+- After receiving stress-test feedback from another LLM
+- Before starting a new build phase
+- When the active version gets meaningfully out of date
+
+## Other reusable context files in this folder
+
+  docs-schema-template-context-v001.md
+      A de-branded, reusable version of the entire docs schema (this
+      repo's structure) — not LeadPilot-specific. Paste this into a
+      future session to bootstrap a new project's docs repo, or to
+      revisit/change the schema itself.
+
+## Size target
+
+Keep context files under ~800 lines so they fit comfortably in an AI
+context window without crowding out the actual conversation.
