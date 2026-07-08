@@ -40,6 +40,8 @@ considered.
 | 011 | Spreadsheet write-back | Added `update_lead_sheet` tool — reps edit lead data from the unified interface instead of the source sheets directly; writes only fire after the rep confirms a shown current-vs-proposed diff | Per PRD v1.01 1b/3a — removes the last reason a rep would need to leave the unified interface |
 | 012 | Communications search | Added `search_communications` tool — searches a client's email/text history by any known identifier (email, phone, full name, company name), returning history, attachments, and confirmed documents | Per PRD v1.01 2a — a client is often reachable through more than one contact point; the rep needs history regardless of which one was used |
 | 013 | Access control | Only authenticated, pre-authorized rep accounts may trigger an agent run, view lead/contact data, or approve a staged action | Per PRD v1.01 2c/3c — "lock down use of the agent by either the account using the agent or some other method" from the changed-to-make notes; resolved as an authenticated-session requirement |
+| 014 | Lead outreach execution model | Added `initiate_lead_call`, `send_lead_text`, `send_lead_email` — all stage drafts only, same rep-approval gate as every other side-effect tool, no autonomous send | Closes a gap in v1.01: lead outreach (call/text/email) was required by 1b, section 2, the system prompt, and Eval Case 1, but no tool existed to back it. Marc confirmed outreach follows the same approval gate as everything else — no carve-out — see PRD v1.02 section 3a |
+| 015 | Lead-source connector architecture | Introduced a `LeadSourceConnector` interface (`list_sources`, `fetch_rows`, `write_field`, `detect_changes`); only `GoogleSheetsConnector` is built now, behind `fetch_all_leads`/`update_lead_sheet` | Keeps prioritization/next-best-action logic from hard-coding Sheets-specific assumptions, so later sources don't require reworking the tools that consume them — see PRD v1.02 section 3e |
 
 ## Open decisions (not yet made — track here as they resolve)
 
@@ -52,6 +54,14 @@ considered.
 - Whether `search_communications` (Decision 012) needs a dedicated
   compliance/retention review before use against real client data —
   see testing/known-issues-log.md Issue 004
+- Data-modeling decision for a `GoogleDocsConnector` (Decision 015) —
+  what structure counts as "one lead record" inside a free-form Doc
+  (Docs-native table vs. consistent heading-per-lead vs. something
+  else) needs to be settled before that connector can even be
+  estimated, let alone built
+- Build order/timeline for the remaining planned connectors (Excel via
+  Microsoft Graph, OnlyOffice Docs Server, LibreOffice/OpenOffice) —
+  none scheduled yet, no validated need beyond Google Sheets so far
 
 ## Notes
 
@@ -62,4 +72,5 @@ considered.
 - Decisions 001-002 and 006-008 are sourced directly from
   prd/LeadPilot_PRD_v1.md; decisions 009-013 are sourced from
   prd/LeadPilot_PRD_v1.01.md and the raw notes in
-  prd/LeadPilot_PRD_v1-changed to make.md.
+  prd/LeadPilot_PRD_v1-changed to make.md; decisions 014-015 are
+  sourced from prd/LeadPilot_PRD_v1.02.md.

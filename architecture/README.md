@@ -8,8 +8,8 @@ the rep-facing dashboard fits in.
 
 - System overview: agent runtime, tool layer, data stores, dashboard
 - Data flow: step-by-step for the hourly run cycle
-- Tool map: all seven tools, what each calls, what each returns (see
-  prd/LeadPilot_PRD_v1.01.md section 3a for the source definitions —
+- Tool map: all ten tools, what each calls, what each returns (see
+  prd/LeadPilot_PRD_v1.02.md section 3a for the source definitions —
   keep this file in sync when tools change)
 - System prompt version history (copy of prd 3b plus any revisions)
 - Database/state schema: how contact history, sync locks, and
@@ -33,7 +33,11 @@ Hourly scheduler
       v
 LeadPilot agent runtime
       |
-      |-- fetch_all_leads ----------> Google Sheets API
+      |-- fetch_all_leads ----------> LeadSourceConnector --> Google Sheets API
+      |                                (GoogleSheetsConnector now;
+      |                                 Excel/OnlyOffice/LibreOffice/
+      |                                 OpenOffice/Docs planned later,
+      |                                 see PRD v1.02 section 3e)
       |-- get_contact_history ------> Google Voice API / call log tracker
       |-- verify_drive_contents ----> Google Drive API
       |-- search_communications ----> Email/SMS provider search APIs (read-only)
@@ -47,28 +51,42 @@ inline spreadsheet editing with diff preview, communications search)
       |
       | -- rep clicks "Approve" --> mints single-use approval token
       v
+      |-- initiate_lead_call --------> Google Voice API (staged, fires only w/ valid token)
+      |-- send_lead_text ------------> SMS provider API  (staged, fires only w/ valid token)
+      |-- send_lead_email -----------> Email provider API (staged, fires only w/ valid token)
       |-- dispatch_slack_handoff ----> Slack Web API   (staged, fires only w/ valid token)
       |-- initiate_backoffice_call --> Google Voice API (staged, fires only w/ valid token)
-      |-- update_lead_sheet ---------> Google Sheets API (staged, fires only w/ valid token)
+      |-- update_lead_sheet ---------> LeadSourceConnector --> Google Sheets API (staged, fires only w/ valid token)
 ```
 
 ## Key architecture notes
 
 - The agent's read/prioritization sequence is fixed in the system
-  prompt (v1.01): fetch leads -> cross-reference contact history ->
+  prompt (v1.02): fetch leads -> cross-reference contact history ->
   prioritize -> verify drive contents -> draft recommended actions ->
   draft back-office handoff if complete. Any change to this sequence
   needs a decisions/ entry, since the eval card
   (testing/eval-suite.md) is written against this exact order.
 - **Nothing with a real-world side effect executes as part of the
   agent's own run.** `dispatch_slack_handoff`, `initiate_backoffice_call`,
-  and `update_lead_sheet` all stage a draft; the actual API call only
-  fires when the interface presents a valid, single-use rep-approval
-  token minted at the moment the rep clicks approve (Decision 009 in
-  decisions/README.md). This is the architecture's most important
-  invariant post-v1.01 — treat any code path that could fire one of
-  these tools without a token as a security bug, not a convenience
-  shortcut.
+  `update_lead_sheet`, `initiate_lead_call`, `send_lead_text`, and
+  `send_lead_email` all stage a draft; the actual API call only fires
+  when the interface presents a valid, single-use rep-approval token
+  minted at the moment the rep clicks approve (Decision 009 in
+  decisions/README.md, extended to the outreach tools by Decision 014).
+  This is the architecture's most important invariant post-v1.01 —
+  treat any code path that could fire one of these tools without a
+  token as a security bug, not a convenience shortcut.
+- **Lead data access goes through a `LeadSourceConnector` interface**
+  (`list_sources`, `fetch_rows`, `write_field`, `detect_changes`),
+  not a direct Sheets API call from business logic (Decision 015 in
+  decisions/README.md). Only `GoogleSheetsConnector` exists today.
+  Excel and OnlyOffice are expected to be straightforward
+  implementations of the same interface later; LibreOffice/OpenOffice
+  will need a polling-based `detect_changes` instead of a webhook, and
+  a Google Docs connector needs its own lead-record data-modeling
+  decision before it can be built at all (see PRD v1.02 section 3e and
+  the open items in decisions/README.md).
 - Atomic state locking (decisions pending on exact implementation —
   file-based, Postgres, Redis, etc.) must commit run timestamps
   *before* tool calls are authorized, to prevent duplicate contact

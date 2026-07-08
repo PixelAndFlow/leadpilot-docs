@@ -1,6 +1,6 @@
 # Threat model
 
-Expanded from PRD v1.01 section 3c (Blast Radius). Update this file
+Expanded from PRD v1.02 section 3c (Blast Radius). Update this file
 whenever a new failure mode is identified — don't let it drift from
 the PRD's living copy.
 
@@ -79,15 +79,19 @@ based on stale or bad data (e.g. a diff the rep never actually saw).
 
 **Safeguard:** Hard execution gate — every side-effect tool call
 (`dispatch_slack_handoff`, `initiate_backoffice_call`,
-`update_lead_sheet`, and any lead-facing outreach send) requires a
-single-use, rep-approval token minted by the interface at the moment
-of confirmation, scoped to that one specific staged action. Tools must
-reject any call presented without a valid, unexpired, single-use token
-— retries or replays of an already-consumed token must also fail.
+`update_lead_sheet`, `initiate_lead_call`, `send_lead_text`, and
+`send_lead_email` as of v1.02) requires a single-use, rep-approval
+token minted by the interface at the moment of confirmation, scoped to
+that one specific staged action. Tools must reject any call presented
+without a valid, unexpired, single-use token — retries or replays of
+an already-consumed token must also fail.
 
 **Verification:** PRD eval card Case 5 (Destructive action
-confirmation) is the standing regression test — confirm that closing
-the interface without approving never results in a tool call.
+confirmation) covers the spreadsheet-write path; Case 7 (Lead outreach
+gate, new in v1.02) covers the same requirement for
+`initiate_lead_call`, `send_lead_text`, and `send_lead_email`. Both
+must pass — confirm that closing the interface without approving never
+results in a tool call, for any of the gated tools.
 
 ## Fifth threat: unauthorized agent access (new in v1.01)
 
@@ -131,3 +135,11 @@ is the standing regression test.
   data-exposure surface than any prior tool. Needs a compliance pass
   (see compliance/README.md) on retention and who can see search
   results before this ships against real client data.
+- **Future lead-source connectors (flagged in v1.02, PRD section 3e)** —
+  only Google Sheets is threat-modeled today. Excel/OnlyOffice reuse
+  the same cloud-API shape and likely inherit these safeguards
+  directly, but LibreOffice/OpenOffice would mean the agent (or a
+  background process) reading local files off disk rather than calling
+  an authenticated cloud API — a different trust boundary that isn't
+  covered here yet. Re-run this threat model, not just the tool map,
+  before any non-Sheets connector ships.
