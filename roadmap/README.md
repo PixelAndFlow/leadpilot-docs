@@ -18,12 +18,18 @@ checklist.
 
 ## Draft Phase 1 roadmap (derived from PRD, needs a public-friendly pass)
 
-**Phase 1 — Core triage and handoff**
+**Phase 1 — Core triage, review, and handoff**
 One consolidated view of every lead across all your intake sheets,
 automatically prioritized so nothing falls through the cracks.
 Automatic tracking of every call, text, and email touch so reps never
-duplicate outreach. Instant Slack alerts to the back office the moment
-a deal file is complete.
+duplicate outreach. A single screen shows exactly what to do next for
+each lead — call, text, email, or a request to the back office — with
+the draft ready to go, but always in the rep's hands: nothing sends,
+calls, or gets written anywhere until the rep says so. The moment a
+deal file is complete, a ready-to-approve handoff to the back office
+is waiting for review instead of a manual write-up. Reps can also look
+up a client's message history by name, email, or phone number in one
+place, and update lead records without leaving that view.
 
 **Later (not yet scoped)**
 Multi-org support, richer analytics, CRM integrations beyond Google

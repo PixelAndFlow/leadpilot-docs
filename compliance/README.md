@@ -32,7 +32,9 @@ before deploying against a real sales org's data.
   who (beyond the 3 back-office stakeholders) can access verified
   files.
 - **Google API scopes** — request the minimum scopes needed for
-  Sheets/Drive read access; avoid broad Workspace admin scopes.
+  Sheets/Drive read/write access (write access is new as of PRD
+  v1.01's `update_lead_sheet` tool); avoid broad Workspace admin
+  scopes.
 - **Data ownership** — the sales org (client), not LeadPilot, likely
   owns the lead data. Document this explicitly before building any
   feature that could be read as LeadPilot retaining or reusing lead
@@ -42,6 +44,17 @@ before deploying against a real sales org's data.
   it prevents lead data or contact histories from being exposed
   through a manipulated agent response. Cross-reference with
   security/threat-model.md.
+- **Communications-search data surface (new, PRD v1.01)** —
+  `search_communications` reads actual email/text content and
+  attachments, not just contact metadata. This needs its own retention
+  and access review before use against real client data — see
+  testing/known-issues-log.md Issue 004 and
+  security/threat-model.md's note on this tool.
+- **Authenticated access (new, PRD v1.01)** — only authenticated,
+  pre-authorized rep accounts may trigger the agent, view lead data,
+  or approve staged actions (decisions/README.md Decision 013). This
+  is also a data-handling-agreement consideration: document what
+  access logging is kept and for how long.
 
 ## Notes
 

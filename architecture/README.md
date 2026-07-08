@@ -8,8 +8,8 @@ the rep-facing dashboard fits in.
 
 - System overview: agent runtime, tool layer, data stores, dashboard
 - Data flow: step-by-step for the hourly run cycle
-- Tool map: all four tools, what each calls, what each returns (see
-  prd/LeadPilot_PRD_v1.md section 3a for the source definitions —
+- Tool map: all seven tools, what each calls, what each returns (see
+  prd/LeadPilot_PRD_v1.01.md section 3a for the source definitions —
   keep this file in sync when tools change)
 - System prompt version history (copy of prd 3b plus any revisions)
 - Database/state schema: how contact history, sync locks, and
@@ -33,33 +33,50 @@ Hourly scheduler
       v
 LeadPilot agent runtime
       |
-      |-- fetch_all_leads --------> Google Sheets API
-      |-- get_contact_history ----> Google Voice API / call log tracker
-      |-- verify_drive_contents --> Google Drive API
-      |-- dispatch_slack_handoff -> Slack Web API
+      |-- fetch_all_leads ----------> Google Sheets API
+      |-- get_contact_history ------> Google Voice API / call log tracker
+      |-- verify_drive_contents ----> Google Drive API
+      |-- search_communications ----> Email/SMS provider search APIs (read-only)
       |
       v
-Prioritized queue (JSON) --> state store (dedup + run-lock)
+Prioritized queue + recommended actions (JSON) --> state store (dedup + run-lock)
       |
       v
-Rep-facing dashboard (review queue, edit/approve outreach, advance file)
+Rep-facing unified interface (review queue, edit/approve outreach,
+inline spreadsheet editing with diff preview, communications search)
+      |
+      | -- rep clicks "Approve" --> mints single-use approval token
+      v
+      |-- dispatch_slack_handoff ----> Slack Web API   (staged, fires only w/ valid token)
+      |-- initiate_backoffice_call --> Google Voice API (staged, fires only w/ valid token)
+      |-- update_lead_sheet ---------> Google Sheets API (staged, fires only w/ valid token)
 ```
 
 ## Key architecture notes
 
-- The agent's tool-call sequence is fixed in the system prompt (v0):
-  fetch leads -> cross-reference contact history -> prioritize ->
-  verify drive contents -> dispatch handoff if complete. Any change to
-  this sequence needs a decisions/ entry, since the eval card
+- The agent's read/prioritization sequence is fixed in the system
+  prompt (v1.01): fetch leads -> cross-reference contact history ->
+  prioritize -> verify drive contents -> draft recommended actions ->
+  draft back-office handoff if complete. Any change to this sequence
+  needs a decisions/ entry, since the eval card
   (testing/eval-suite.md) is written against this exact order.
+- **Nothing with a real-world side effect executes as part of the
+  agent's own run.** `dispatch_slack_handoff`, `initiate_backoffice_call`,
+  and `update_lead_sheet` all stage a draft; the actual API call only
+  fires when the interface presents a valid, single-use rep-approval
+  token minted at the moment the rep clicks approve (Decision 009 in
+  decisions/README.md). This is the architecture's most important
+  invariant post-v1.01 — treat any code path that could fire one of
+  these tools without a token as a security bug, not a convenience
+  shortcut.
 - Atomic state locking (decisions pending on exact implementation —
   file-based, Postgres, Redis, etc.) must commit run timestamps
   *before* tool calls are authorized, to prevent duplicate contact
   (see security/threat-model.md, failure mode: duplicate contact
   tracking failure).
-- Whether outreach is auto-sent or requires rep approval before send
-  is an open decision — see decisions/decisions-log.md and
-  mvp/README.md.
+- Every agent run, data view, and approval requires a valid
+  authenticated rep session (Decision 013) — this gate sits in front
+  of the entire diagram above, not just the approval step.
 
 ## Tech stack status
 

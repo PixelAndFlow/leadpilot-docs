@@ -5,7 +5,8 @@ Paste the current version at the start of any new conversation.
 
 ## Current file
 
-  leadpilot_context-v001.md     Active — use this one
+  leadpilot_context-v002.md     Active — use this one
+  leadpilot_context-v001.md     Previous — kept for reference
 
 ## Versioning convention
 

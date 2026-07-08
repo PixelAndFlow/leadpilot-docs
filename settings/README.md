@@ -26,10 +26,13 @@ user-editable settings vs. hard-coded constants)
 
 | Value | PRD source | Editable or fixed? |
 |---|---|---|
-| Rank 1 recency window (24 hours) | System prompt v0, prioritization logic | TBD |
+| Rank 1 recency window (24 hours) | System prompt v1.01, prioritization logic | TBD |
 | File size validation threshold (5KB) | 3c, file completeness safeguard | Recommend fixed — this is a security control, not a preference |
-| Back-office stakeholder accounts (3 named) | System prompt v0, dispatch step | Recommend fixed/hard-coded, not derived from any editable or user-influenced input — see security/threat-model.md scope-expansion risk |
+| Back-office stakeholder accounts (3 named) | System prompt v1.01, handoff step | Recommend fixed/hard-coded, not derived from any editable or user-influenced input — see security/threat-model.md scope-expansion risk |
 | Run schedule (hourly) | Section 2, "persistent hourly schedule" | TBD |
+| Back-office handoff channel default (call vs. Slack) | 3b, handoff step (v1.01) | Likely editable per-rep or per-lead preference — confirm with Marc/Abdoul |
+| Rep-approval token expiry window | 3a, execution-gating rule (v1.01) | Recommend fixed — security control, not a preference; see security/threat-model.md, "autonomous execution bypass" |
+| Authenticated session timeout | 2c, access control (v1.01) | Recommend fixed — security control; see decisions/README.md Decision 013 |
 
 ## Notes
 
@@ -37,3 +40,8 @@ user-editable settings vs. hard-coded constants)
   expose as editable) vs. security-relevant constants that should stay
   hard-coded regardless of UI convenience. The Slack stakeholder list
   is the clearest example of the latter.
+- The rep-approval token expiry and session timeout are the two new
+  security-relevant constants introduced by the v1.01 approval-gating
+  and access-control changes. Treat both like the stakeholder list:
+  hard-coded/fixed, not user-editable, until there's a specific reason
+  to expose them.

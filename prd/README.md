@@ -17,9 +17,20 @@ evaluation criteria before any code is written.
 
 ## Current file
 
-  LeadPilot_PRD_v1.md   — Agent Build PRD, dated 2026-07-06
+  LeadPilot_PRD_v1.01.md — Agent Build PRD, dated 2026-07-07
                            Owners: Marc Delsoin, Abdoul Ba
-                           Marked as a starting point — changes expected.
+                           Revises v1 with rep-approval gating, the
+                           unified spreadsheet-edit interface, the
+                           communications-search tool, and access
+                           control. Still a working draft.
+
+## Previous versions
+
+  LeadPilot_PRD_v1.md   — Agent Build PRD, dated 2026-07-06
+                           Superseded by v1.01 — kept unedited as the
+                           historical starting point. Raw change notes
+                           that produced v1.01 are in
+                           `LeadPilot_PRD_v1-changed to make.md`.
 
 ## Notes
 

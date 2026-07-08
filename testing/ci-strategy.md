@@ -7,22 +7,32 @@ Status: stub — fill in once the tech stack and hosting are decided.
 - Lint / type-check
 - Unit tests for each tool function (`fetch_all_leads`,
   `get_contact_history`, `verify_drive_contents`,
-  `dispatch_slack_handoff`) against mocked API responses
-- Case 1 and Case 2 from testing/eval-suite.md, run against a mocked
-  agent (no real API calls, no real Slack messages)
+  `dispatch_slack_handoff`, `search_communications`,
+  `update_lead_sheet`, `initiate_backoffice_call`) against mocked API
+  responses
+- For the four side-effect tools (`dispatch_slack_handoff`,
+  `initiate_backoffice_call`, `update_lead_sheet`, and outreach sends),
+  a test confirming each rejects execution when no valid rep-approval
+  token is present — this is the execution-gating rule from PRD v1.01
+  and must never regress
+- Case 1, Case 2, Case 4, and Case 5 from testing/eval-suite.md, run
+  against a mocked agent (no real API calls, no real Slack messages,
+  no real spreadsheet writes)
 
 ## What should run before every deploy (not necessarily every push)
 
-- Full eval suite including Case 3 (adversarial input)
-- security/pen-test-checklist.md, at least the prompt-injection
-  section
+- Full eval suite including Case 3 (adversarial input) and Case 6
+  (unauthorized access attempt)
+- security/pen-test-checklist.md, at least the prompt-injection and
+  execution-gating sections
 
 ## What stays manual
 
 - Full pen-test-checklist.md sweep — before launch and before major
   releases, not every deploy
-- Anything requiring a real Slack send or real Google Drive file
-  (mock these in CI; verify manually before a real launch)
+- Anything requiring a real Slack send, real phone call, real
+  spreadsheet write, or real Google Drive file (mock these in CI;
+  verify manually before a real launch)
 
 ## Notes
 

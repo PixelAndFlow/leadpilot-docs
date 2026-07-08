@@ -40,11 +40,21 @@ placeholder until the runtime is locked. Once decided, fill in:
 
 Per the PRD's tool definitions, `leadpilot/.env.example` will need:
 
-  GOOGLE_SHEETS_API_KEY=      or OAuth client credentials
-  GOOGLE_VOICE_API_KEY=       or equivalent call-log source credentials
+  GOOGLE_SHEETS_API_KEY=      or OAuth client credentials (read AND
+                               write scope — write is new in v1.01 for
+                               update_lead_sheet)
+  GOOGLE_VOICE_API_KEY=       or equivalent call-log source credentials,
+                               also used by initiate_backoffice_call (v1.01)
   GOOGLE_DRIVE_API_KEY=       or OAuth client credentials
   SLACK_BOT_TOKEN=            for chat.postMessage
   SLACK_HANDOFF_CHANNEL_IDS=  the 3 back-office stakeholder channels/users
+  COMMS_SEARCH_API_KEY=       email/SMS provider search credentials for
+                               search_communications (v1.01, read-only)
+  REP_AUTH_SESSION_SECRET=    signs/validates authenticated rep sessions
+                               (v1.01 access-control requirement)
+  APPROVAL_TOKEN_SECRET=      signs/validates single-use rep-approval
+                               tokens required by every side-effect tool
+                               call (v1.01 execution-gating rule)
 
 ## Notes
 
