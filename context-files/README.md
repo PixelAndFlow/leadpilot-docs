@@ -32,11 +32,14 @@ Never overwrite the current version — always create a new file.
 
 ## Other reusable context files in this folder
 
-  docs-schema-template-context-v001.md
+  docs-schema-template-context-v002.md     Active — use this one
+  docs-schema-template-context-v001.md     Previous — kept for reference
+
       A de-branded, reusable version of the entire docs schema (this
       repo's structure) — not LeadPilot-specific. Paste this into a
       future session to bootstrap a new project's docs repo, or to
-      revisit/change the schema itself.
+      revisit/change the schema itself. v002 added the code-repo-side
+      public ROADMAP.md convention.
 
 ## Size target
 
