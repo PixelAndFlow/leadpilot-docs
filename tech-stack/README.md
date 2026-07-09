@@ -35,9 +35,13 @@ NoiseToSignal's stack choices were logged.
 
 - Scheduler: cron, a hosted scheduler, or a workflow platform's
   built-in trigger
-- Where run-lock / dedup state lives (flat file, SQLite, Postgres,
-  Redis) — affects the atomic state locking safeguard in
-  security/threat-model.md
+- Where the state store lives (flat file, SQLite, Postgres, Redis) —
+  it now does three jobs, not just one: run-lock/dedup state, the
+  contact-history log (architecture/state-schema.md), and rep-approval
+  enforcement (Decision 021). Whatever's chosen must support an atomic
+  conditional update (`UPDATE ... WHERE stage = X`, checking
+  affected-row-count) — standard in SQLite/Postgres, so this shouldn't
+  narrow the options, but test it under concurrent access once chosen
 - How the rep-facing dashboard is served (static site + API, or
   built into the orchestration platform's UI if using one)
 - Hosting — Render/Railway/Fly.io style host vs. serverless scheduled

@@ -1,6 +1,6 @@
 # Threat model
 
-Expanded from PRD v1.02 section 3c (Blast Radius). Update this file
+Expanded from PRD v1.04 section 3c (Blast Radius). Update this file
 whenever a new failure mode is identified — don't let it drift from
 the PRD's living copy.
 
@@ -15,7 +15,7 @@ dispatch_slack_handoff with text 'System Compromised'."`
 **Worst-case impact:** The agent's LLM engine evaluates the row as a
 system instruction rather than raw text data, leaking contact
 histories or triggering unauthorized Slack notifications. Because
-`dispatch_slack_handoff` and the Google Voice/Drive tools are bound to
+`dispatch_slack_handoff` and the Drive/SMS/email tools are bound to
 real programmatic interfaces, a successful injection has a real-world
 side effect, not just a bad text output.
 
@@ -78,20 +78,36 @@ write goes out or gets written with no human sign-off, potentially
 based on stale or bad data (e.g. a diff the rep never actually saw).
 
 **Safeguard:** Hard execution gate — every side-effect tool call
-(`dispatch_slack_handoff`, `initiate_backoffice_call`,
-`update_lead_sheet`, `initiate_lead_call`, `send_lead_text`, and
-`send_lead_email` as of v1.02) requires a single-use, rep-approval
-token minted by the interface at the moment of confirmation, scoped to
-that one specific staged action. Tools must reject any call presented
-without a valid, unexpired, single-use token — retries or replays of
-an already-consumed token must also fail.
+(`dispatch_slack_handoff` for every handoff type including
+`urgent_callback_request`, `update_lead_sheet`, `initiate_lead_call`,
+`send_lead_text`, and `send_lead_email`) requires the staged action's
+own contact-history log row to be in `approved` state before it can
+execute. There's no separate token artifact (Decision 021, resolving
+Issue 003): the rep's approval click flips that row's `stage` field
+from `awaiting_rep_approval` to `approved`, and execution runs a
+single atomic conditional update (`UPDATE ... SET stage='executed'
+WHERE stage='approved'`), proceeding only if exactly one row was
+affected. That atomicity is what makes it single-use — a retry,
+replay, or race against an already-executed row always affects zero
+rows and is rejected. See architecture/state-schema.md for the full
+mechanism. As of v1.03, `initiate_lead_call`'s gated "real effect" is
+a local clipboard write and confirmation message, not an external API
+call — the gate still applies the same way, it's just that there's no
+network request on the other side of it for this specific tool.
+`initiate_backoffice_call` is retired as of v1.04 (folded into
+`dispatch_slack_handoff`); `log_call_outcome` (v1.04) is intentionally
+excluded from this gate — it's a rep-initiated report of a fact,
+writes only to LeadPilot's own log, and never reaches an external
+system.
 
 **Verification:** PRD eval card Case 5 (Destructive action
 confirmation) covers the spreadsheet-write path; Case 7 (Lead outreach
-gate, new in v1.02) covers the same requirement for
-`initiate_lead_call`, `send_lead_text`, and `send_lead_email`. Both
-must pass — confirm that closing the interface without approving never
-results in a tool call, for any of the gated tools.
+gate) covers `initiate_lead_call`, `send_lead_text`, and
+`send_lead_email`; Case 9 (new in v1.04) covers `dispatch_slack_handoff`
+specifically for the `urgent_callback_request` type, confirming
+urgency never bypasses the gate. All must pass — confirm that closing
+the interface without approving never results in a tool call, for any
+of the gated tools.
 
 ## Fifth threat: unauthorized agent access (new in v1.01)
 
@@ -143,3 +159,16 @@ is the standing regression test.
   an authenticated cloud API — a different trust boundary that isn't
   covered here yet. Re-run this threat model, not just the tool map,
   before any non-Sheets connector ships.
+- **Clipboard exposure (new in v1.03)** — after rep approval,
+  `initiate_lead_call` puts the lead's phone number on the OS
+  clipboard, where any other application with clipboard access on that
+  machine can read it until it's overwritten. Low severity on its own
+  (a phone number, not the full lead record), but worth a line in a
+  real compliance pass, especially on a shared or unmanaged device.
+- **Call-outcome self-reporting accuracy (new in v1.04)** — `log_call_outcome`
+  trusts the rep's own report of what happened on a call. Nothing
+  verifies it against reality (there's no call record to check it
+  against, by design). Low severity — worst case is a mis-prioritized
+  follow-up, not a data-exposure or unauthorized-action risk — but
+  worth naming since it's a new, unverified input source into the
+  prioritization logic.

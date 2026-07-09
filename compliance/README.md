@@ -56,6 +56,32 @@ before deploying against a real sales org's data.
   is also a data-handling-agreement consideration: document what
   access logging is kept and for how long.
 
+## Rep-approval gating is not a compliance substitute (added 2026-07-08)
+
+The rep-approval gate (every outreach send requires explicit rep
+sign-off, PRD 3a Execution-gating rule) closes the "did a human
+actually decide to send this" gap and meaningfully reduces
+bulk/autodialer-style liability — a rep individually reviewing and
+triggering each message is a different risk profile than a system
+blasting messages unattended. But it does not by itself satisfy any
+of the following, which remain outstanding regardless of who clicks
+approve:
+
+- **TCPA (calls/texts)** — still need documented prior consent to
+  contact a lead's phone number for calls/texts, and a compliant
+  opt-out mechanism (e.g. honoring STOP on texts). Rep approval
+  doesn't establish that consent exists.
+- **CAN-SPAM (email)** — every commercial email needs an unsubscribe
+  mechanism, honored opt-outs, and accurate sender/physical-address
+  info, whether a human reviewed it or not.
+- **Do-not-call list scrubbing** — needs to happen before a number is
+  ever surfaced for a call or text, independent of approval.
+- **Communications-search exposure (Issue 004)** — `search_communications`
+  is a read operation; the approval gate governs sends, not reads, so
+  this needs its own review regardless.
+- **Data ownership / retention** — unaffected by who approves what;
+  still needs the data-handling-agreement work listed above.
+
 ## Notes
 
 - This is not a substitute for legal review — have a qualified

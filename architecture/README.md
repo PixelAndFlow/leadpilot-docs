@@ -9,7 +9,7 @@ the rep-facing dashboard fits in.
 - System overview: agent runtime, tool layer, data stores, dashboard
 - Data flow: step-by-step for the hourly run cycle
 - Tool map: all ten tools, what each calls, what each returns (see
-  prd/LeadPilot_PRD_v1.02.md section 3a for the source definitions —
+  prd/LeadPilot_PRD_v1.04.md section 3a for the source definitions —
   keep this file in sync when tools change)
 - System prompt version history (copy of prd 3b plus any revisions)
 - Database/state schema: how contact history, sync locks, and
@@ -38,45 +38,78 @@ LeadPilot agent runtime
       |                                 Excel/OnlyOffice/LibreOffice/
       |                                 OpenOffice/Docs planned later,
       |                                 see PRD v1.02 section 3e)
-      |-- get_contact_history ------> Google Voice API / call log tracker
+      |-- get_contact_history ------> LeadPilot's own contact-history log
+      |                                (state store — see architecture/
+      |                                 state-schema.md; no external API)
       |-- verify_drive_contents ----> Google Drive API
       |-- search_communications ----> Email/SMS provider search APIs (read-only)
       |
       v
-Prioritized queue + recommended actions (JSON) --> state store (dedup + run-lock)
+Prioritized queue + recommended actions (JSON) --> state store (contact
+                                                     history + dedup + run-lock)
       |
       v
 Rep-facing unified interface (review queue, edit/approve outreach,
-inline spreadsheet editing with diff preview, communications search)
+inline spreadsheet editing with diff preview, communications search,
+report a call's outcome)
       |
       | -- rep clicks "Approve" --> mints single-use approval token
       v
-      |-- initiate_lead_call --------> Google Voice API (staged, fires only w/ valid token)
+      |-- initiate_lead_call --------> Clipboard write only, no API (staged, fires only w/ valid token)
       |-- send_lead_text ------------> SMS provider API  (staged, fires only w/ valid token)
       |-- send_lead_email -----------> Email provider API (staged, fires only w/ valid token)
-      |-- dispatch_slack_handoff ----> Slack Web API   (staged, fires only w/ valid token)
-      |-- initiate_backoffice_call --> Google Voice API (staged, fires only w/ valid token)
+      |-- dispatch_slack_handoff ----> Slack Web API — completion handoff, info request, or
+      |                                 urgent_callback_request (staged, fires only w/ valid token;
+      |                                 replaces the retired initiate_backoffice_call)
       |-- update_lead_sheet ---------> LeadSourceConnector --> Google Sheets API (staged, fires only w/ valid token)
+
+      | -- rep reports call outcome (no token needed, rep-sourced fact) --
+      v
+      |-- log_call_outcome ----------> writes directly to the contact-history log (state store)
 ```
 
 ## Key architecture notes
 
 - The agent's read/prioritization sequence is fixed in the system
-  prompt (v1.02): fetch leads -> cross-reference contact history ->
+  prompt (v1.04): fetch leads -> cross-reference contact history ->
   prioritize -> verify drive contents -> draft recommended actions ->
   draft back-office handoff if complete. Any change to this sequence
   needs a decisions/ entry, since the eval card
   (testing/eval-suite.md) is written against this exact order.
 - **Nothing with a real-world side effect executes as part of the
-  agent's own run.** `dispatch_slack_handoff`, `initiate_backoffice_call`,
-  `update_lead_sheet`, `initiate_lead_call`, `send_lead_text`, and
-  `send_lead_email` all stage a draft; the actual API call only fires
-  when the interface presents a valid, single-use rep-approval token
-  minted at the moment the rep clicks approve (Decision 009 in
-  decisions/README.md, extended to the outreach tools by Decision 014).
-  This is the architecture's most important invariant post-v1.01 —
-  treat any code path that could fire one of these tools without a
-  token as a security bug, not a convenience shortcut.
+  agent's own run.** `dispatch_slack_handoff` (every handoff type,
+  including `urgent_callback_request`), `update_lead_sheet`,
+  `initiate_lead_call`, `send_lead_text`, and `send_lead_email` all
+  stage a draft; the actual effect only fires once that action's
+  contact-history log row is flipped to `approved` and a single atomic
+  conditional update confirms it hasn't already executed (Decision 009
+  in decisions/README.md, extended to the outreach tools by Decision
+  014, extended again to cover urgent back-office handoffs by Decision
+  019 — urgency is never a reason to skip the gate, mechanism finalized
+  by Decision 021 — see architecture/state-schema.md; no separate
+  token object exists). This is the architecture's most important
+  invariant post-v1.01 — treat any code path that could fire one of
+  these tools without that row being in `approved` state as a security
+  bug, not a convenience shortcut. For `initiate_lead_call`
+  specifically, that "effect" is a clipboard write and a confirmation
+  message, not a network call — see the next bullet. `log_call_outcome`
+  is deliberately *not* part of this gate (Decision 020) — it's the rep
+  reporting a fact about a call they already placed, writes only to
+  the internal contact-history log, and has no external effect to gate.
+- **`initiate_lead_call` never touches Google Voice or any calling app
+  (Decision 016 in decisions/README.md).** Google Voice has no official
+  API, and its Acceptable Use Policy explicitly prohibits scripting or
+  automating call placement — even a script that only pre-fills the
+  dialer and stops. So rep approval copies the lead's phone number to
+  the clipboard and shows a confirmation message; the rep dials
+  manually in their own calling tool.
+- **Google Voice dependency is fully retired (Issue 001, resolved).**
+  `get_contact_history` reads LeadPilot's own contact-history log
+  (Decision 018, architecture/state-schema.md) instead of any external
+  call-log API, and `initiate_backoffice_call` is retired in favor of
+  `dispatch_slack_handoff`'s `urgent_callback_request` type
+  (Decision 019). No tool anywhere in this architecture depends on
+  Google Voice having an API it doesn't have.
 - **Lead data access goes through a `LeadSourceConnector` interface**
   (`list_sources`, `fetch_rows`, `write_field`, `detect_changes`),
   not a direct Sheets API call from business logic (Decision 015 in

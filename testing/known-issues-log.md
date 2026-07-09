@@ -18,14 +18,28 @@ unknown.
 ## Issue 001 — Google Voice API access model unverified
 
 Opened: 2026-07-07
-Status: Open
+Status: Resolved (see Decisions 016, 018, 019, 020 in decisions/README.md)
 Description: The PRD's `get_contact_history` tool assumes a
-`GET /v1/communications/logs` endpoint exists for Google Voice. This
-needs to be verified against actual Google Voice API documentation —
-it's possible this requires a different integration approach (e.g. a
-third-party call-tracking service instead of a native Google API).
+`GET /v1/communications/logs` endpoint exists for Google Voice. Since
+opening this issue, we confirmed directly: Google Voice has no
+official public API for calls or messages, and its Acceptable Use
+Policy explicitly prohibits scripting or automating call/message
+placement (temporary block escalating to account suspension for
+violations).
 Impact: Could change the architecture and tech stack choice if the
 assumed API doesn't exist as described.
+Resolution: No tool in LeadPilot depends on a Google Voice API anymore.
+`initiate_lead_call` (PRD v1.03) copies the lead's phone number to the
+clipboard on rep approval instead of calling any telephony API — the
+rep dials manually. `get_contact_history` (PRD v1.04) reads from a
+LeadPilot-owned contact-history log instead of any external call-log
+service (architecture/state-schema.md, Decision 018).
+`initiate_backoffice_call` is retired (PRD v1.04, Decision 019) — the
+back-office handoff, including what used to be the call option, is
+always a Slack message via `dispatch_slack_handoff` now. The
+call-outcome visibility gap (LeadPilot can't automatically know if a
+call was answered) is closed by `log_call_outcome` (PRD v1.04,
+Decision 020), a rep-initiated report, not an automatic signal.
 
 ## Issue 002 — Auto-send vs. rep-approval workflow undecided
 
@@ -43,7 +57,7 @@ prd/LeadPilot_PRD_v1.01.md section 3a ("Execution-gating rule").
 ## Issue 003 — Rep-approval token mechanism not yet specified
 
 Opened: 2026-07-07
-Status: Open
+Status: Resolved (see Decision 021 in decisions/README.md)
 Description: PRD v1.01 requires a single-use, rep-approval token to
 authorize any side-effect tool call, but the exact mechanism (how it's
 minted, its scope/expiry, where it's validated) isn't defined yet —
@@ -51,6 +65,14 @@ this is an implementation detail that depends on the tech stack
 decision.
 Impact: Blocks a concrete architecture/dashboard-architecture.md and
 architecture/state-schema.md until resolved.
+Resolution: No separate token object. The contact-history log row
+(Decision 018) carries the approval state directly via a `stage`
+field; approval flips it to `approved`, and a single atomic
+conditional update (`UPDATE ... WHERE stage='approved'`, checking
+exactly one row affected) gates the real effect — see
+architecture/state-schema.md. Still open: a concurrency test to
+confirm this holds under real concurrent load once the tech stack
+(and therefore the database) is chosen.
 
 ## Issue 004 — Communications-search compliance review needed
 

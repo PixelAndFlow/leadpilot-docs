@@ -31,11 +31,19 @@ having nothing.
 ## Current state (fill in / confirm with Abdoul)
 
 - **Owners:** Marc Delsoin, Abdoul Ba (per PRD v1, July 6, 2026)
-- **Equity split:** Not yet documented — needs a conversation and,
-  ideally, a real agreement (see partnership-agreement-status.md)
+- **Equity split:** Equal — 50/50 between Marc and Abdoul (confirmed
+  2026-07-08). Still worth a real written agreement (see
+  partnership-agreement-status.md) — an equal split doesn't on its own
+  answer what happens to the code, the name, or client data if one
+  partner leaves or the partnership ends.
 - **Roles:** Not yet divided in writing
-- **Decision rights:** Not yet defined — recommend deciding this
-  before disagreements happen, not during one
+- **Decision rights:** Either partner may fork or use the work as they
+  see fit (confirmed 2026-07-08) — i.e. no exclusive veto held by
+  either side. Recommend still writing down what "use it as they see
+  fit" means in practice before it's tested by an actual disagreement
+  (e.g. can one partner take it commercial solo, what happens to the
+  LeadPilot name, who owns client data collected under one partner's
+  version).
 
 ## Notes
 

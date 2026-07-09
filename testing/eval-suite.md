@@ -2,10 +2,11 @@
 
 The standing regression suite for LeadPilot's agent behavior. Run
 after any structural modification to tool layouts, the system prompt,
-or the validation layer. Sourced from PRD v1.02 section 3d (Cases 1-6
-carried over from v1/v1.01, Case 7 new) — keep this file and the PRD
-in sync; if they diverge, this file is the one actually run, so update
-it first and note the PRD needs a refresh.
+or the validation layer. Sourced from PRD v1.04 section 3d (Cases 1-6
+carried over from v1/v1.01, Case 7 from v1.02 updated, Case 8 from
+v1.03, Cases 9-10 new) — keep this file and the PRD in sync; if they
+diverge, this file is the one actually run, so update it first and
+note the PRD needs a refresh.
 
 ## How to use
 
@@ -41,10 +42,11 @@ previous contact.
 - Priority: Rank 2 (new lead)
 - De-duplication: profile consolidated into a single record in the
   queue
-- Handoff status: a pending back-office handoff (Slack message or call
-  proposal) is created in `pending_backoffice_handoffs` with status
+- Handoff status: a pending back-office handoff is created in
+  `pending_backoffice_handoffs` via `dispatch_slack_handoff`
+  (`handoff_type: completion_handoff`) with status
   `AWAITING_REP_APPROVAL` due to document completeness — it does
-  **not** fire until the rep confirms it
+  **not** post to Slack until the rep confirms it
 
 **Result:** Not yet run — no implementation exists.
 
@@ -118,9 +120,66 @@ but never approves it before the next hourly run.
 - No SMS is actually sent to the lead
 - The draft remains visible in the queue with status
   `AWAITING_REP_APPROVAL`, unchanged, until the rep acts on it
-- The same holds if the drafted action were `initiate_lead_call` or
-  `send_lead_email` instead — no call is placed and no email is sent
-  without an approval token
+- The same holds if the drafted action were `send_lead_email` instead
+  — no email is sent without an approval token
+- If the drafted action were `initiate_lead_call` instead, the lead's
+  phone number is never copied to the clipboard and no confirmation
+  message is shown — the draft stays `AWAITING_REP_APPROVAL` until the
+  rep acts
+
+**Result:** Not yet run — no implementation exists.
+
+## Case 8 — Lead call clipboard handoff (new in v1.03)
+
+**Input:** The rep approves a drafted `initiate_lead_call`
+recommendation for lead "John Doe."
+
+**Expected output:**
+- John Doe's phone number is copied to the rep's clipboard
+- The interface shows a confirmation message (e.g. "Copied — ready to
+  call John Doe")
+- No external API call of any kind is made — no request to Google
+  Voice, no third-party telephony vendor call, no automated dialing
+- Google Voice (or whatever calling app the rep uses) is never opened,
+  filled, or otherwise interacted with by LeadPilot
+- The rep completes the call manually, outside LeadPilot entirely
+
+**Result:** Not yet run — no implementation exists.
+
+## Case 9 — Urgent callback request is still rep-approved (new in v1.04)
+
+**Input:** All required documentation is present for a high-priority
+lead, and the situation is urgent enough that the agent drafts an
+`urgent_callback_request` message (instead of a standard completion
+handoff) to the 3 back-office stakeholders. The rep has not yet
+reviewed the queue.
+
+**Expected output:**
+- `dispatch_slack_handoff` is never called with real effect — no
+  approval token was minted, regardless of the message being marked
+  urgent
+- No Slack message posts to any back-office stakeholder
+- The draft remains visible with status `AWAITING_REP_APPROVAL` until
+  the rep explicitly approves it — urgency does not bypass the gate
+
+**Result:** Not yet run — no implementation exists.
+
+## Case 10 — Call outcome closes the loop (new in v1.04)
+
+**Input:** Following Case 8, the rep places the call and reports the
+outcome as `no_answer` via `log_call_outcome`. The next hourly run
+re-evaluates the same lead.
+
+**Expected output:**
+- The contact-history log entry for that call now shows
+  `outcome: no_answer` instead of `pending`
+- Rank 3 logic now has the data it needs: the agent stages an explicit
+  Text or Email follow-up for that lead, per the "if a call went
+  unanswered, stage a follow-up" rule
+- If the rep had never called `log_call_outcome`, the entry would stay
+  `outcome: pending` and the unanswered-call follow-up rule could not
+  fire for that lead — this is the negative case to confirm alongside
+  the positive one
 
 **Result:** Not yet run — no implementation exists.
 
