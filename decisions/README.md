@@ -31,7 +31,7 @@ considered.
 | 002 | Ownership | Marc Delsoin, Abdoul Ba (co-owners) | Per PRD v1, July 6, 2026 |
 | 003 | Docs repo structure | Adopted the NoiseToSignal docs schema, expanded (governance/, roadmap/, release-process/, monitoring-observability/, public/) | Reuse proven structure; add professional-repo elements identified as gaps before LeadPilot's build starts |
 | 004 | Repo separation | Two private repos: `leadpilot` (code) and `leadpilot-docs` (planning/security/decisions) | Security separation and independent access control — see leadpilot-docs/README.md |
-| 005 | Tech stack | Deferred | Not yet decided; expected to change substantially — see tech-stack/README.md |
+| 005 | Tech stack | ~~Deferred~~ — **Superseded by Decision 022** | Not yet decided; expected to change substantially — see tech-stack/README.md |
 | 006 | Prompt injection defense | Isolated validation layer strips instruction-like keywords from all spreadsheet-sourced text before tool execution | Per PRD 3c blast radius — indirect prompt injection is the identified worst-case failure mode |
 | 007 | Duplicate contact prevention | Atomic state locking — run timestamps committed before tool calls are authorized | Per PRD 3c — timing-gap duplicate contact is a named failure mode with brand-damage impact |
 | 008 | File completeness validation | Require file size >5KB and strict PDF extension match before counting a document as present | Per PRD 3c — prevents false-positive Slack handoffs on empty/invalid files |
@@ -48,15 +48,14 @@ considered.
 | 019 | Back-office handoff channel (supersedes Decision 010) | `initiate_backoffice_call` is retired. Back-office handoffs are always a Slack message via `dispatch_slack_handoff`, including a new `urgent_callback_request` message type for what used to be the call option — still rep-approved, no autonomous-send exception | Closes Issue 001 entirely — no tool depends on a Google Voice API anymore. Confirmed directly with Marc that urgency is not a reason to skip rep approval, even for an internal-only recipient — see PRD v1.04 section 3a/3b and Eval Case 9 |
 | 020 | Call-outcome logging | Added `log_call_outcome` — a rep-initiated tool (not agent-drafted, no approval token needed) that records answered/no-answer/voicemail/didn't-call against a call's contact-history log entry | Closes the gap flagged in Decision 018: since calls happen entirely outside LeadPilot (Decision 016), outcomes aren't automatically knowable. Without this, Rank 3's unanswered-call follow-up rule has no data for calls specifically. See PRD v1.04 section 3a/3f and Eval Case 10 |
 | 021 | Rep-approval enforcement mechanism (resolves Issue 003) | No separate token object. The contact-history log row (Decision 018) carries a `stage` field (`drafted -> awaiting_rep_approval -> approved -> executed`/`rejected`/`expired`); approval flips it to `approved`, and execution does a single atomic conditional update (`UPDATE ... SET stage='executed' WHERE stage='approved'`), checking exactly one row was affected before firing the real effect | Simplest correct mechanism — the same row that's already the audit trail (Decision 018) is also the enforcement point, so there's no second system to build or keep in sync. Pairs with the authenticated-session requirement (Decision 013): session confirms who approved, this confirms the action fires exactly once. See architecture/state-schema.md. Alternatives considered: a signed JWT-style token (rejected — the token never leaves the backend, so cryptographic signing adds complexity without adding real security over a database check); an opaque token in a separate table (rejected — functionally redundant with the state machine, would duplicate bookkeeping) |
+| 022 | Tech stack (supersedes Decision 005) | Python + Claude Agent SDK (agent runtime); FastAPI + Jinja2/htmx (dashboard, no separate SPA); Postgres via Neon (state store — not SQLite); Render Cron Job (hourly batch run) + Render Web Service (always-on dashboard), sharing the same Postgres instance; `google-api-python-client`/`google-auth-oauthlib` (Sheets/Drive/Gmail), Twilio SDK (SMS), `slack_sdk` (Slack); GitHub Actions running the eval suite per PR | Python for integration-library maturity (Google/Twilio/Slack) and full control over the tool-calling loop, given how much of the PRD depends on knowing exactly what the agent did (security guard, exact eval-card matching) — rejected LangChain (unneeded abstraction) and an orchestration platform (less control over the security layer). Postgres over SQLite specifically because the Web Service and Cron Job are separate containers — a local SQLite file isn't visible across both, so a networked DB is needed from day one, not after. Gmail API over a separate email vendor to keep outbound email inside the Workspace ecosystem this product already runs in and feed `search_communications` naturally. Full writeup: tech-stack/stack-overview.md |
 
 ## Open decisions (not yet made — track here as they resolve)
 
-- Runtime/stack (tech-stack/README.md)
-- Where dedup/run-lock state lives
-- CI/CD and hosting choice
-- Exact mechanism for the rep-approval token from Decision 009 (how
-  it's minted, scoped, and expired — implementation detail, depends on
-  stack choice)
+- Dedup/run-lock table schema — Decision 022 resolved *where* this
+  lives (the same Neon Postgres instance), but the schema itself isn't
+  designed yet; only the contact-history log is
+  (architecture/state-schema.md)
 - Whether `search_communications` (Decision 012) needs a dedicated
   compliance/retention review before use against real client data —
   see testing/known-issues-log.md Issue 004
@@ -71,10 +70,10 @@ considered.
 - Exact UI placement/flow for `log_call_outcome` (Decision 020) — the
   tool exists in the PRD; the interface design for prompting the rep
   at the right moment isn't done yet
-- Concurrency test for the Decision 021 conditional update — needs to
-  be written once the tech stack (and therefore the actual database)
-  is chosen, to confirm the atomic update genuinely prevents a double
-  execution under real concurrent load, not just sequentially
+- Concurrency test for the Decision 021 conditional update — unblocked
+  now that Postgres is chosen (Decision 022), not yet written
+- Secrets management approach (Render env vars assumed by Decision
+  022, not yet confirmed)
 
 ## Notes
 
@@ -90,5 +89,6 @@ considered.
   from prd/LeadPilot_PRD_v1.03.md; decisions 017-018 were made in
   direct conversation with Marc (2026-07-08) and are now reflected in
   prd/LeadPilot_PRD_v1.04.md; decisions 019-020 are sourced from
-  prd/LeadPilot_PRD_v1.04.md; decision 021 is an architecture-level
-  decision (not a PRD change) — see architecture/state-schema.md.
+  prd/LeadPilot_PRD_v1.04.md; decisions 021-022 are architecture/
+  infrastructure decisions, not PRD changes — see
+  architecture/state-schema.md and tech-stack/stack-overview.md.

@@ -3,13 +3,15 @@
 Every technology used in LeadPilot — what it is, why it was chosen,
 what version, and any important gotchas.
 
-## Status: undecided
+## Status: decided (2026-07-08)
 
-Marc and Abdoul have not locked the runtime/stack yet, and expect it
-may change substantially as the PRD is refined. This file is a
-placeholder — fill in `stack-overview.md` once decisions are made,
-and log the reasoning in `decisions/decisions-log.md` the same way
-NoiseToSignal's stack choices were logged.
+Python + Claude Agent SDK + FastAPI + Postgres (Neon) + Render (Web
+Service + Cron Job). Full breakdown, rationale, and what's still open
+within the chosen stack: see `stack-overview.md`. Logged as Decision
+022 in `decisions/README.md`, superseding Decision 005 (deferred).
+Still expected to evolve as the build progresses — this isn't a
+promise nothing changes, just that there's a concrete starting point
+now instead of an open question blocking everything else.
 
 ## What belongs here (once decided)
 
@@ -23,33 +25,38 @@ NoiseToSignal's stack choices were logged.
 
   stack-overview.md      Master list of all technologies
 
-## Options on the table (not yet decided)
+## Options considered (see Decision 022 for why Python won)
 
 | Option | Notes |
 |---|---|
-| Python agent loop (LangChain or custom) | Common for tool-calling agents with scheduled jobs; large ecosystem for Google API + Slack SDKs |
-| Node.js agent (Claude Agent SDK or custom) | Consistent with Marc's NoiseToSignal/JS background |
-| Orchestration platform (n8n, Make, etc.) | Faster to prototype the hourly-run + tool-call shape, less control over the security guard layer described in the PRD |
+| Python agent loop (Claude Agent SDK) — **chosen** | Large ecosystem for Google API + Slack + Twilio SDKs; Agent SDK fits the tool-calling pattern the PRD is already written in |
+| Node.js agent (Claude Agent SDK or custom) | Consistent with Marc's NoiseToSignal/JS background, but Python's integration-library maturity won out for this project |
+| Orchestration platform (n8n, Make, etc.) | Faster to prototype the hourly-run + tool-call shape, but less control over the security guard layer described in the PRD — rejected |
 
-## Things to decide before locking this in
+## Resolved (was "things to decide before locking this in")
 
-- Scheduler: cron, a hosted scheduler, or a workflow platform's
-  built-in trigger
-- Where the state store lives (flat file, SQLite, Postgres, Redis) —
-  it now does three jobs, not just one: run-lock/dedup state, the
-  contact-history log (architecture/state-schema.md), and rep-approval
-  enforcement (Decision 021). Whatever's chosen must support an atomic
-  conditional update (`UPDATE ... WHERE stage = X`, checking
-  affected-row-count) — standard in SQLite/Postgres, so this shouldn't
-  narrow the options, but test it under concurrent access once chosen
-- How the rep-facing dashboard is served (static site + API, or
-  built into the orchestration platform's UI if using one)
-- Hosting — Render/Railway/Fly.io style host vs. serverless scheduled
-  function
+- Scheduler: Render Cron Job, hourly — separate process from the
+  always-on dashboard, not a continuously running loop
+- State store: Postgres via Neon, not SQLite — the dashboard (Web
+  Service) and batch run (Cron Job) are separate containers, so a
+  local SQLite file wouldn't be visible to both; needs a real
+  networked database from day one. Supports the atomic conditional
+  update the approval gate depends on (Decision 021)
+- Dashboard serving: FastAPI + server-rendered templates (Jinja2/htmx),
+  not a separate SPA
+- Hosting: Render — one Web Service, one Cron Job, shared Neon Postgres
+
+## Still open within this stack
+
+- Dedup/run-lock table schema (architecture/state-schema.md only has
+  the contact-history log designed so far)
+- Concurrency test for Decision 021's conditional update — now
+  unblocked, not yet written
+- Secrets management approach (Render env vars assumed, not confirmed)
 
 ## Notes
 
-- Do not let stack indecision block the PRD, MVP scope, or security
-  planning — those are stack-agnostic and can proceed now.
-- Once the stack is chosen, update architecture/system-overview.md
-  and commands/commands.md together.
+- Full detail lives in `stack-overview.md` — this file is the status
+  summary, that one is the reference.
+- Update `stack-overview.md` whenever a component is added, swapped,
+  or upgraded, and log the reasoning as a new decision.

@@ -18,43 +18,57 @@ pick this up after months away and get running in minutes.
 
 ## Status
 
-Stack is undecided (see tech-stack/README.md), so this file is a
-placeholder until the runtime is locked. Once decided, fill in:
+Stack locked (Decision 022 — Python, Claude Agent SDK, FastAPI,
+Postgres/Neon, Render). Full detail in tech-stack/stack-overview.md.
 
   # Navigate to project
   cd path/to/leadpilot
 
   # Install dependencies
-  (npm install / pip install -r requirements.txt / etc.)
+  pip install -r requirements.txt
 
-  # Run one-off (no scheduler) against test data
-  (to be defined)
+  # Run the batch agent loop once, locally, against test data
+  # (no scheduler involved — this is what the Render Cron Job calls)
+  python -m leadpilot.run_batch
 
-  # Run the eval suite (testing/eval-suite.md cases 1-3)
-  (to be defined)
+  # Run the dashboard/API locally
+  uvicorn leadpilot.app:app --reload
+
+  # Run the eval suite (testing/eval-suite.md, all 10 cases)
+  pytest tests/eval_suite/
 
   # Deploy
-  (to be defined)
+  # Push to main — Render auto-deploys both the Web Service and the
+  # Cron Job from the same repo
 
-## Environment variables required (known now, independent of stack)
+## Environment variables required
 
-Per the PRD's tool definitions, `leadpilot/.env.example` will need:
+Per PRD v1.04's tool definitions and Decision 022's stack,
+`leadpilot/.env.example` will need:
 
-  GOOGLE_SHEETS_API_KEY=      or OAuth client credentials (read AND
-                               write scope — write is new in v1.01 for
-                               update_lead_sheet)
-  GOOGLE_VOICE_API_KEY=       or equivalent call-log source credentials,
-                               also used by initiate_backoffice_call (v1.01)
-  GOOGLE_DRIVE_API_KEY=       or OAuth client credentials
-  SLACK_BOT_TOKEN=            for chat.postMessage
-  SLACK_HANDOFF_CHANNEL_IDS=  the 3 back-office stakeholder channels/users
-  COMMS_SEARCH_API_KEY=       email/SMS provider search credentials for
-                               search_communications (v1.01, read-only)
-  REP_AUTH_SESSION_SECRET=    signs/validates authenticated rep sessions
-                               (v1.01 access-control requirement)
-  APPROVAL_TOKEN_SECRET=      signs/validates single-use rep-approval
-                               tokens required by every side-effect tool
-                               call (v1.01 execution-gating rule)
+  ANTHROPIC_API_KEY=          Claude Agent SDK / tool-calling loop
+  DATABASE_URL=                Neon Postgres connection string — the
+                               shared state store (contact history +
+                               approval gate + dedup/run-lock, see
+                               architecture/state-schema.md)
+  GOOGLE_OAUTH_CLIENT_ID=      Sheets, Drive, and Gmail scopes — Sheets
+  GOOGLE_OAUTH_CLIENT_SECRET=  needs read AND write (update_lead_sheet);
+                               Gmail used for send_lead_email and feeds
+                               search_communications
+  TWILIO_ACCOUNT_SID=          send_lead_text and the SMS half of
+  TWILIO_AUTH_TOKEN=           search_communications — no Google Voice
+  TWILIO_FROM_NUMBER=          credential exists or is used anywhere
+                               (testing/known-issues-log.md Issue 001)
+  SLACK_BOT_TOKEN=             for chat.postMessage (dispatch_slack_handoff)
+  SLACK_HANDOFF_CHANNEL_IDS=   the 3 back-office stakeholder channels/users
+  REP_AUTH_SESSION_SECRET=     signs/validates authenticated rep sessions
+                               (Decision 013 access-control requirement)
+
+Note what's deliberately *not* here: there is no
+`APPROVAL_TOKEN_SECRET` or equivalent. Decision 021 resolved the
+rep-approval mechanism as a conditional database update on the
+contact-history log's own `stage` column — no signed or opaque token
+object exists to configure.
 
 ## Notes
 

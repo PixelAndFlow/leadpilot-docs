@@ -131,9 +131,15 @@ report a call's outcome)
 
 ## Tech stack status
 
-Runtime/language is not yet decided (Python agent loop vs Node.js vs
-other) — see tech-stack/README.md. This file will be updated with
-concrete component names once that's locked.
+Decided (Decision 022) — Python + Claude Agent SDK for the tool-calling
+loop, FastAPI + Jinja2/htmx for the dashboard, Postgres via Neon for
+the state store, Render (Web Service + Cron Job) for hosting. Full
+detail in tech-stack/stack-overview.md. The diagram above is written
+in tool/API terms rather than stack-specific terms since it doesn't
+change with the implementation language, but the "state store" boxes
+in it now concretely mean the shared Neon Postgres instance, read and
+written by both the Cron Job (batch run) and the Web Service
+(dashboard) — two separate containers, one database.
 
 ## Notes
 

@@ -1,0 +1,113 @@
+# Stack overview
+
+Locked 2026-07-08 — see decisions/README.md Decision 022 for the
+reasoning and rejected alternatives. This is the master list; update
+it whenever a component is added, swapped, or upgraded.
+
+## Runtime
+
+- **Python 3.11+** — chosen over Node.js/Claude Agent SDK-in-TS or an
+  orchestration platform (n8n/Make) for the ecosystem fit: mature,
+  well-documented Google API, Twilio, and Slack SDKs, and full control
+  over the tool-calling loop, which matters given how much of the PRD
+  (structural-parsing security guard, exact eval-card matching) depends
+  on knowing precisely what the agent did and why.
+
+## Agent orchestration
+
+- **Claude Agent SDK (Python)** — runs the tool-calling loop described
+  in PRD system prompt v1.04: `fetch_all_leads` -> `get_contact_history`
+  -> prioritize -> `verify_drive_contents` -> draft actions -> draft
+  handoff. Chosen over LangChain (unnecessary abstraction weight for a
+  single fixed sequence) and a fully hand-rolled loop against the raw
+  Anthropic Messages API (the Agent SDK already handles the tool-call
+  parsing/retry mechanics this would otherwise require reinventing).
+- Tool definitions in code should mirror PRD v1.04 section 3a exactly
+  — name, inputs, and the execution-gating rule per tool. If a tool's
+  shape changes, that's a PRD version bump first, code change second.
+
+## Web framework / dashboard
+
+- **FastAPI** — serves the rep-facing dashboard and the API endpoints
+  the frontend calls (queue view, approve/reject, diff view, search,
+  call-outcome logging). Pydantic models double as validation for the
+  system prompt's strict JSON output contract (3b OUTPUT FORMAT) —
+  define that shape once as a Pydantic model and get free validation
+  on every agent run's output.
+- **Server-rendered templates (Jinja2) + htmx, with a little vanilla
+  JS for the one browser-native interaction** (`navigator.clipboard.writeText()`
+  for the `initiate_lead_call` handoff — see PRD v1.03/Decision 016).
+  Chosen over a separate React app: the dashboard's job is narrow
+  (list, review, approve, diff, search), and a single Python codebase
+  with no separate JS build pipeline is less for a two-person team to
+  maintain. Revisit if the interface outgrows what htmx handles
+  comfortably.
+
+## State store
+
+- **Postgres, hosted on Neon.** This is the one place the original
+  recommendation needed correcting: SQLite doesn't actually fit this
+  topology. The dashboard (an always-on Web Service) and the batch
+  agent run (a separate, periodically-invoked Cron Job) are two
+  different processes in two different containers — a local SQLite
+  file written by one is not visible to the other. Anything both sides
+  need to read and write — the contact-history log, the approval-gate
+  `stage` field (Decision 021), dedup/run-lock state — needs a real
+  network-accessible database from day one, not a "SQLite now, migrate
+  later" path, because the two-container split is Day 1 architecture,
+  not something introduced after launch.
+- Used identically in local dev (a Neon dev branch, or Postgres via
+  Docker) and production, so the atomic conditional-update pattern
+  (`UPDATE ... WHERE stage = 'approved'`) that the approval gate
+  depends on is tested against the same engine it runs on in
+  production — avoids SQLite/Postgres concurrency-semantics
+  differences masking a real bug.
+- Schema: see `architecture/state-schema.md` for the contact-history
+  log table (which also carries the approval-gate `stage` field) and
+  the still-unbuilt dedup/run-lock table.
+
+## Scheduler
+
+- **Render Cron Job**, hourly, running the batch agent script
+  end-to-end and exiting — no task queue (Celery/RQ), no persistent
+  worker process. At one sales org and one run per hour, that
+  infrastructure isn't earning its keep yet. Separate from the
+  always-on Web Service; see the two-service split above.
+
+## External integrations
+
+- **Google (Sheets, Drive, Gmail)** — `google-api-python-client` +
+  `google-auth-oauthlib`. Gmail API (not a separate transactional
+  email vendor) for `send_lead_email`, so outbound email lives in the
+  rep's actual Gmail thread — keeps everything in the Google Workspace
+  ecosystem this product already runs in, and feeds `search_communications`
+  naturally since replies land where the rep already looks.
+- **Twilio** (Python SDK) — `send_lead_text`. No viable free/Google
+  Voice-based alternative exists (`testing/known-issues-log.md` Issue
+  001) — this is a real, billed vendor relationship, not a placeholder.
+- **Slack** — `slack_sdk`. Bolt's interactivity framework isn't needed
+  yet; `dispatch_slack_handoff` only posts messages, it doesn't need to
+  handle inbound Slack interactions (buttons, slash commands) in Phase 1.
+
+## Hosting
+
+- **Render** — one Web Service (FastAPI dashboard, always-on) and one
+  Cron Job (hourly batch run), both connecting to the same Neon
+  Postgres instance. Auto-deploy from GitHub on push to main.
+
+## CI
+
+- **GitHub Actions**, minimal to start: run the eval suite
+  (`testing/eval-suite.md`) against every PR before merge. This is the
+  actual regression gate the PRD's eval card is meant to be — not
+  optional polish once tools exist to test.
+
+## Known gaps / not yet decided
+
+- Concurrency test for the Decision 021 conditional update — now
+  unblocked (Postgres is chosen), still needs to be written.
+- Dedup/run-lock table schema — not yet designed, only the
+  contact-history log is (`architecture/state-schema.md`).
+- Secrets management — where OAuth tokens, the Twilio/Slack keys, and
+  the Neon connection string actually live (Render's env var/secrets
+  store is the default assumption, not yet confirmed).

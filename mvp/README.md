@@ -113,6 +113,69 @@ the smallest complete version worth running against real leads.
 - [ ] Login/authenticated-session gate before any of the above is
       reachable
 
+## Build order (added 2026-07-08, now that the stack is locked — Decision 022)
+
+Sequenced so each step only depends on what's already done above it —
+build in this order, not by feature preference. Uses "Step," not
+"Phase," to avoid confusion with the Phase 1/Phase 2 product-scope
+language used elsewhere in this file and in roadmap/README.md — this
+is a build sequence within Phase 1, not a different product phase.
+
+### Step 0 — accounts and access (no code yet)
+
+- [ ] Google Cloud project + OAuth client (Sheets, Drive, Gmail scopes)
+- [ ] Twilio account + phone number
+- [ ] Slack app registered with `chat.postMessage` scope, installed
+      where the 3 back-office stakeholders are
+- [ ] Neon Postgres project (dev + prod)
+- [ ] Render account, GitHub repo connected for auto-deploy
+
+### Step 1 — foundation (no product logic yet)
+
+- [ ] Contact-history + approval-gate table, from
+      architecture/state-schema.md's schema
+- [ ] Dedup/run-lock table — schema not designed yet; design it here
+- [ ] Authenticated rep-session system (Decision 013)
+- [ ] `GoogleSheetsConnector` implementing the `LeadSourceConnector`
+      interface (PRD v1.04 section 3e) — not a direct Sheets API call
+      from business logic
+
+### Step 2 — the tools
+
+- [ ] Implement each of the 10 tools (PRD v1.04 section 3a) one at a
+      time, checked against its eval case as it's built, not after
+- [ ] Prompt-injection validation layer (Decision 006)
+
+### Step 3 — the interface
+
+- [ ] Prioritized queue view
+- [ ] Approve/reject flow wired to the status-flip mechanism
+      (Decision 021) — this is where "approval" actually becomes real
+- [ ] Spreadsheet diff view (current-vs-proposed)
+- [ ] Communications search box
+- [ ] Call-outcome quick action — UI flow not designed yet, design it
+      here (Decision 020's open item)
+- [ ] Back-office handoff review card (all three message types)
+
+### Step 4 — wire it together and test
+
+- [ ] Render Cron Job running the full system-prompt sequence hourly
+- [ ] All 10 `testing/eval-suite.md` cases passing against the real
+      implementation, not just designed on paper
+- [ ] Concurrency test for the approval-gate conditional update
+      (Decision 021's open item, unblocked now that Postgres is chosen)
+
+### Step 5 — before this touches a real lead
+
+- [ ] TCPA/CAN-SPAM/do-not-call compliance work (compliance/README.md)
+- [ ] `search_communications` compliance/retention review
+      (testing/known-issues-log.md Issue 004)
+- [ ] Real written partnership agreement (governance/README.md —
+      50/50 and fork rights are confirmed verbally, not yet on paper)
+- [ ] Security review against security/threat-model.md and
+      security/pen-test-checklist.md
+- [ ] Soft launch: one rep, one sales org, before opening it up further
+
 ## Phase 1 — explicitly out of scope (confirm with owners before Phase 2 planning)
 
 - CRM integrations beyond Google Sheets

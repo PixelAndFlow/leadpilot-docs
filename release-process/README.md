@@ -1,7 +1,9 @@
 # release-process/
 
-Deployment runbook and rollback procedure for LeadPilot. Status: stub
-— fill in once tech stack and hosting are chosen.
+Deployment runbook and rollback procedure for LeadPilot. Tech stack
+and hosting are now chosen (Decision 022 — Render Web Service + Cron
+Job, Neon Postgres); this file's actual step-by-step procedure is
+still a stub to fill in once there's something to deploy.
 
 ## What belongs here
 
@@ -20,12 +22,15 @@ Deployment runbook and rollback procedure for LeadPilot. Status: stub
 
 ## Pre-deploy checklist (draft, stack-agnostic)
 
-- [ ] All three testing/eval-suite.md cases pass
+- [ ] All ten testing/eval-suite.md cases pass, including Case 9
+      (urgent handoff still gated) and Case 10 (call-outcome logging)
+- [ ] Concurrency test for the approval-gate conditional update
+      (Decision 021) passes against the real Postgres instance
 - [ ] No open Issue in testing/known-issues-log.md blocks this release
 - [ ] Secrets/credentials confirmed current (not mid-rotation) per
       security/secrets-rotation-runbook.md
-- [ ] Change logged in decisions/decisions-log.md if it affects
-      prompt, tools, or prioritization logic
+- [ ] Change logged in decisions/README.md if it affects prompt,
+      tools, or prioritization logic
 
 ## Notes
 
