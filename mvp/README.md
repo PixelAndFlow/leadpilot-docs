@@ -132,13 +132,45 @@ is a build sequence within Phase 1, not a different product phase.
 
 ### Step 1 — foundation (no product logic yet)
 
-- [ ] Contact-history + approval-gate table, from
-      architecture/state-schema.md's schema
-- [ ] Dedup/run-lock table — schema not designed yet; design it here
-- [ ] Authenticated rep-session system (Decision 013)
-- [ ] `GoogleSheetsConnector` implementing the `LeadSourceConnector`
+Done 2026-07-10 by Abdoul, on `abdouls-branch` in the `leadpilot`
+code repo (not yet merged to `main` — pending Marc's review). All four
+items below are real, working code with passing tests against a real
+local Postgres (and the connector against a real live Google Sheet),
+not just designed on paper — see each item's test file for evidence,
+per this file's own "check off only when built AND verified" rule.
+
+- [x] Contact-history + approval-gate table, from
+      architecture/state-schema.md's schema — `leadpilot/gate.py`,
+      tested in `tests/test_gate.py` including a concurrency test
+      (10 simultaneous execute attempts on the same approved row,
+      exactly one wins) that resolves the test flagged as unwritten in
+      Decision 021 and Issue 003
+- [x] Dedup/run-lock table — designed as three tables:
+      `lead_source_rows` (raw-row-to-canonical-lead mapping),
+      `lead_action_locks` (per-lead duplicate-contact prevention), and
+      `agent_run_locks` (hourly-cron mutex with stale-lock recovery).
+      `leadpilot/locks.py`, tested in `tests/test_locks.py` including
+      concurrency tests for both lock types
+- [x] Authenticated rep-session system (Decision 013) — resolved as
+      email+password with our own DB-backed sessions, not Google
+      OAuth, to keep this independent of Step 0's Google Cloud
+      project (confirmed with Abdoul 2026-07-09 — see the new decision
+      logged below). `leadpilot/auth.py` + `leadpilot/app.py`, tested
+      in `tests/test_auth.py` and `tests/test_app.py` (real HTTP
+      login/logout/whoami cycle, expired/revoked/deactivated-session
+      rejection)
+- [x] `GoogleSheetsConnector` implementing the `LeadSourceConnector`
       interface (PRD v1.04 section 3e) — not a direct Sheets API call
-      from business logic
+      from business logic. Authenticates via a Google service account
+      rather than the `GOOGLE_OAUTH_CLIENT_ID`/`SECRET` flow
+      `commands/README.md` originally assumed for all Google access
+      (see the new decision logged below — flagging for Marc to
+      confirm). Verified against a real live test spreadsheet, not
+      mocks, in `tests/test_google_sheets_connector_live.py` — this
+      file skips automatically without
+      `GOOGLE_SERVICE_ACCOUNT_KEY_PATH` configured, so it will show
+      `SKIPPED` (not `FAILED`) on Marc's machine until he sets up his
+      own service account the same way
 
 ### Step 2 — the tools
 

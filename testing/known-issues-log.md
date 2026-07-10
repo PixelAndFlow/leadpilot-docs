@@ -70,9 +70,12 @@ Resolution: No separate token object. The contact-history log row
 field; approval flips it to `approved`, and a single atomic
 conditional update (`UPDATE ... WHERE stage='approved'`, checking
 exactly one row affected) gates the real effect — see
-architecture/state-schema.md. Still open: a concurrency test to
-confirm this holds under real concurrent load once the tech stack
-(and therefore the database) is chosen.
+architecture/state-schema.md. The concurrency test this issue flagged
+as still open is now written and passing:
+`leadpilot/tests/test_gate.py::test_try_execute_is_single_use_under_concurrency`
+fires 10 real simultaneous execute attempts at the same approved row
+against real Postgres — exactly one wins, every time (Abdoul,
+2026-07-10, Step 1).
 
 ## Issue 004 — Communications-search compliance review needed
 
