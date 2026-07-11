@@ -22,7 +22,10 @@ to per-rep OAuth (`drive.file` scope + Google Picker) instead of a
 shared service account, the hourly batch run becomes per-rep, and a
 new tool (`fetch_ad_hoc_sheet`) is added for on-demand sheet lookups.
 Marc asked for all of this to be documented across the PRD, MVP
-checklist, decisions log, and this conversation log itself.
+checklist, decisions log, and this conversation log itself. Both
+resulting PRs were reviewed (Abdoul's verbal go-ahead) and merged to
+`main`: `leadpilot` as commit `17fbc3e`, `leadpilot-docs` as PR #1,
+commit `8e902af`.
 
 Key outputs:
 - `prd/LeadPilot_PRD_v1.05.md` — new PRD version: `fetch_all_leads`,
@@ -244,6 +247,64 @@ unified around the new OAuth client), and `LeadPilot/.env.example`
 (annotated rather than deleting the still-functional Decision-024
 variables, since Step 1's shipped code still depends on them until
 Step 2's rework lands). Wrote this conversation log last.
+
+**Marc:** Asked whether he could push directly to `main` or should
+work on a branch, since Abdoul owns the `leadpilot` repo.
+
+**Claude:** Pointed to the project's own `CONTRIBUTING.md`, which
+already documents the answer: branch from `main`, open a PR, at least
+one other owner reviews before merge (CODEOWNERS lists both). Offered
+to create branches and push in both repos.
+
+**Marc:** Agreed. Claude hit a filesystem permission issue — its
+sandbox could create files in the SynologyDrive-mounted repo folders
+but not delete them, which broke git's lock-file mechanism for `add`/
+`commit`. Branch creation itself succeeded (a lightweight ref write),
+but committing had to happen in Marc's own terminal instead. Claude
+gave him the exact commands for both repos plus drafted PR titles/
+descriptions.
+
+**Marc:** Hit the same stale `index.lock` error running the commands
+himself. Claude clarified this was a real leftover lock file (created
+during its own earlier attempts) rather than a permissions issue on
+Marc's machine, and gave the one-line fix (`rm -f .git/index.lock`).
+
+**Marc:** Reported Abdoul had verbally approved merging, and asked
+Claude to help do the PR on GitHub.
+
+**Claude:** No browser was connected (Claude in Chrome) and its
+sandbox has no network access to github.com, so it gave Marc direct
+compare-URL links for both repos plus the drafted PR title/body text
+to paste in, rather than attempting the actions itself.
+
+**Marc:** Checked GitHub first before running anything further —
+screenshotted both repos' branch lists. `leadpilot-docs` showed the
+branch pushed; `LeadPilot` didn't.
+
+**Claude:** Explained the gap: the `LeadPilot` branch had only been
+created locally (from Claude's earlier sandbox session, before the
+delete-permission issue was found) and never committed or pushed;
+`leadpilot-docs` had gone through Marc's own terminal successfully.
+Gave the remaining commands for `LeadPilot`.
+
+**Marc:** Confirmed both branches pushed, then said Abdoul had given
+the go-ahead to merge directly.
+
+**Claude:** Recommended still opening the PRs first, even with verbal
+approval already given, since it preserves a durable record consistent
+with how the rest of this project tracks decisions — then merge
+immediately from that same page.
+
+**Marc:** Merged the `leadpilot` PR, then asked whether the
+`leadpilot-docs` branch was missing, since he hadn't created that PR
+yet — a screenshot of the compare page showed the branch present and
+selected ("Able to merge"), just not yet submitted. Created and merged
+it: `leadpilot-docs` PR #1, commit `8e902af` into `main`; `leadpilot`
+merged as commit `17fbc3e`. Asked Claude to document the merge itself.
+
+**Claude:** Added an "Update 2026-07-11" note to Decision 026 in
+`decisions/README.md` recording both merge commits and Abdoul's
+approval, and appended this closing section to this conversation log.
 
 (This is a condensed reconstruction of the conversation's substance,
 not a raw system export — tool-call output and intermediate file reads
