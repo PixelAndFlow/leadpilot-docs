@@ -68,26 +68,51 @@ it whenever a component is added, swapped, or upgraded.
 
 ## Scheduler
 
-- **Render Cron Job**, hourly, running the batch agent script
-  end-to-end and exiting — no task queue (Celery/RQ), no persistent
-  worker process. At one sales org and one run per hour, that
-  infrastructure isn't earning its keep yet. Separate from the
+- **Render Cron Job**, hourly. As of Decision 027, the job now loops
+  over every rep who has connected a Google account (Decision 026),
+  running the fetch/prioritize/verify/draft sequence once per rep
+  using that rep's own OAuth grant — not a single global pass over one
+  shared sheet list. Still no task queue (Celery/RQ) and no persistent
+  worker process; at one sales org's rep count and one run per hour,
+  a simple in-process loop within the same Cron Job invocation is
+  enough. `agent_run_locks` (Decision 025) needs to move from a
+  singleton mutex to a per-rep mutex to match — flagged in
+  architecture/state-schema.md, not yet built. Separate from the
   always-on Web Service; see the two-service split above.
 
 ## External integrations
 
 - **Google (Sheets, Drive, Gmail)** — `google-api-python-client` +
-  `google-auth-oauthlib`. Gmail API (not a separate transactional
-  email vendor) for `send_lead_email`, so outbound email lives in the
-  rep's actual Gmail thread — keeps everything in the Google Workspace
-  ecosystem this product already runs in, and feeds `search_communications`
-  naturally since replies land where the rep already looks.
+  `google-auth-oauthlib`, one consistent per-rep OAuth model across
+  all three (Decision 026, reversed 2026-07-11 — **supersedes the
+  service-account plan from Decision 024**). Sheets and Drive use the
+  `drive.file` scope plus the Google Picker API: each rep does a
+  one-time "Connect Google Account" consent, then selects which
+  specific sheets/folders LeadPilot may touch via Google's own file
+  picker — nothing is pre-shared to a standing identity. LeadPilot
+  stores that rep's refresh token and uses it both for `fetch_all_leads`/
+  `verify_drive_contents`/`update_lead_sheet` (now run per rep, see
+  Scheduler below) and for the new on-demand `fetch_ad_hoc_sheet` tool.
+  `drive.file` was chosen over the broader `spreadsheets`/`drive`
+  scopes specifically to avoid Google's sensitive-scope app-verification
+  review and to keep access literally scoped to what the rep chose,
+  not everything they can see. Gmail uses the same OAuth client for its
+  own consent (`send_lead_email` sends *as* a specific rep's own Gmail
+  account), which was always a per-rep case even under the old plan —
+  see Decision 026 for the full reasoning on why Sheets/Drive moved to
+  match it.
 - **Twilio** (Python SDK) — `send_lead_text`. No viable free/Google
   Voice-based alternative exists (`testing/known-issues-log.md` Issue
   001) — this is a real, billed vendor relationship, not a placeholder.
 - **Slack** — `slack_sdk`. Bolt's interactivity framework isn't needed
   yet; `dispatch_slack_handoff` only posts messages, it doesn't need to
   handle inbound Slack interactions (buttons, slash commands) in Phase 1.
+- **Google Picker API** (new, Decision 026) — client-side JS widget
+  embedded in the dashboard (Step 3) so a rep can select which specific
+  sheets/folders LeadPilot may access after granting `drive.file`
+  consent. Needs its own API key (separate from the OAuth client
+  secret, lower sensitivity, but still tracked in
+  security/secrets-rotation-runbook.md).
 
 ## Hosting
 
@@ -106,8 +131,18 @@ it whenever a component is added, swapped, or upgraded.
 
 - Concurrency test for the Decision 021 conditional update — now
   unblocked (Postgres is chosen), still needs to be written.
-- Dedup/run-lock table schema — not yet designed, only the
-  contact-history log is (`architecture/state-schema.md`).
-- Secrets management — where OAuth tokens, the Twilio/Slack keys, and
-  the Neon connection string actually live (Render's env var/secrets
-  store is the default assumption, not yet confirmed).
+- Per-rep `agent_run_locks` mutex schema (Decision 027) — the existing
+  singleton-mutex design (Decision 025) needs to change, not yet done.
+- `rep_google_credentials` table design, including the encryption-at-
+  rest approach for stored refresh tokens (Decision 026) — shape
+  sketched in `architecture/state-schema.md`, not finalized.
+- Rework of the Step-1-built `GoogleSheetsConnector` from a shared
+  service-account instance to a per-rep-authenticated one (Decision
+  026) — real code change, not yet done; see `mvp/README.md` Step 2.
+- Secrets management — where each rep's OAuth refresh token (Decision
+  026), the OAuth client secret (Sheets/Drive/Gmail), the Google
+  Picker API key, the Twilio/Slack keys, and the Neon connection
+  string actually live (Render's env var/secrets store is the default
+  assumption for the static secrets; per-rep refresh tokens live in
+  Postgres, not an env var, and need their own encryption approach —
+  not yet confirmed).

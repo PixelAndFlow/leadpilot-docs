@@ -1,6 +1,6 @@
 # Threat model
 
-Expanded from PRD v1.04 section 3c (Blast Radius). Update this file
+Expanded from PRD v1.05 section 3c (Blast Radius). Update this file
 whenever a new failure mode is identified — don't let it drift from
 the PRD's living copy.
 
@@ -130,6 +130,46 @@ call executes.
 **Verification:** PRD eval card Case 6 (Unauthorized access attempt)
 is the standing regression test.
 
+## Sixth threat: cross-rep data leak (new in v1.05)
+
+**Scenario:** As of Decision 026, `fetch_all_leads`, `verify_drive_contents`,
+and `fetch_ad_hoc_sheet` authenticate as the individual requesting rep
+via that rep's own stored OAuth refresh token, rather than one shared
+service account. If a session/credential mixup ever caused one of
+these calls to use the wrong rep's stored credential — or to fall back
+to some other rep's or a shared credential — a rep could see another
+rep's leads or Drive documents.
+
+**Worst-case impact:** Rep A sees Rep B's lead data, contact list, or
+uploaded documents, even though Rep A never connected or was granted
+access to Rep B's sheets. This is a new risk this revision introduces
+in exchange for the risk it removes (see below) — it did not exist
+under the shared-service-account model, where every rep's run had the
+same standing access regardless of identity.
+
+**Safeguard:** Data access guard — every Sheets/Drive call is scoped
+to the currently authenticated rep's own stored credential only, never
+another rep's or a shared one. `agent_run_locks` moving from a
+singleton mutex to a per-rep mutex (Decision 027) prevents concurrent
+per-rep batch runs from crossing wires. See `architecture/state-schema.md`'s
+sketched `rep_google_credentials` table.
+
+**Verification:** PRD eval card Case 11 (Per-rep sheet access
+boundary) is the standing regression test — confirms Rep A's queue
+never includes Rep B's sheets, and that an ad hoc lookup against a
+sheet Rep A wasn't granted fails rather than falling back to another
+credential.
+
+**Note on the risk this replaces:** the previous shared-service-account
+model (Decision 024) had the opposite shape of risk — one compromised
+or buggy credential had standing access to *every* pre-shared intake
+sheet across the whole org, regardless of which rep triggered the run.
+Per-rep OAuth narrows a compromise's blast radius to one rep's own
+Google-granted access, at the cost of introducing the credential-mixup
+risk above. Net assessment: narrower blast radius per incident, a new
+(and testable) failure mode to guard against — see Decision 026 for
+the full reasoning.
+
 ## Threats not yet covered by the PRD (flag for discussion with Abdoul)
 
 - **Credential compromise** — what happens if the Google/Slack API
@@ -144,7 +184,10 @@ is the standing regression test.
 - **Multi-tenant data bleed** — if LeadPilot is ever sold to more than
   one sales org, what prevents one org's lead data or contact history
   from being visible to another? Not a Phase 1 concern per the PRD,
-  but worth flagging before Phase 2 planning.
+  but worth flagging before Phase 2 planning. Related but distinct
+  from the sixth threat above: that one covers cross-*rep* leaks
+  within a single org, which is in scope for Phase 1 now that access
+  is rep-scoped (Decision 026).
 - **Communications-search data surface (new in v1.01)** —
   `search_communications` reads actual message content and attachments
   across email and text, not just contact metadata. This is a larger

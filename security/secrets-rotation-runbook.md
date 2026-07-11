@@ -5,9 +5,31 @@ chosen (tech-stack/README.md, commands/README.md).
 
 ## Secrets in scope
 
-- `GOOGLE_SHEETS_API_KEY` (or OAuth client credentials)
+- `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` — one shared
+  OAuth client covering Sheets, Drive, AND Gmail (Decision 026,
+  reversed 2026-07-11 — **supersedes** the service-account plan below).
+  Rotation here means generating new client credentials in Google
+  Cloud Console; existing reps' stored refresh tokens are unaffected
+  by rotating the client secret itself
+- `GOOGLE_PICKER_API_KEY` — client-side key for the Google Picker
+  widget (Decision 026). Lower sensitivity than the OAuth client
+  secret (it's exposed to the browser by design), but still tracked
+  here and rotatable independently
+- **Per-rep OAuth refresh tokens** (new, Decision 026) — not a single
+  static secret. Each rep's refresh token is stored encrypted in
+  Postgres (`rep_google_credentials`, see architecture/state-schema.md),
+  not an env var. "Rotation" for an individual rep means that rep
+  disconnecting and re-consenting; a compromise of the encryption
+  key protecting this column is the actual incident-scale rotation
+  event (re-encrypt all stored tokens, force every rep to reconnect)
+- ~~`GOOGLE_SERVICE_ACCOUNT_KEY_PATH`~~ — superseded by Decision 026.
+  The Step 1 code merged to `main` still uses this for local dev
+  against the not-yet-reworked `GoogleSheetsConnector` (Decision 024),
+  so it isn't removed from `.env.example` yet — see commands/README.md.
+  Once Step 2 reworks the connector for per-rep OAuth, this key and
+  its rotation procedure (generating a new service-account key in
+  Google Cloud Console) go away entirely
 - `GOOGLE_VOICE_API_KEY` (or equivalent — pending research/README.md)
-- `GOOGLE_DRIVE_API_KEY` (or OAuth client credentials)
 - `SLACK_BOT_TOKEN`
 
 ## Rotation triggers
@@ -29,6 +51,14 @@ chosen (tech-stack/README.md, commands/README.md).
    credential (run the eval suite smoke case)
 5. Revoke the old credential
 6. Confirm no errors in the next scheduled run
+
+**Per-rep refresh token compromise (new, Decision 026):** revoke that
+rep's Google OAuth grant from the Google Account permissions page (or
+the Workspace admin console), delete the stored row in
+`rep_google_credentials`, and have the rep reconnect via the dashboard
+(re-consent + re-pick sheets via the Picker). This is a per-rep
+procedure, not a global credential swap — other reps' access is
+unaffected.
 
 ## Notes
 

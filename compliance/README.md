@@ -31,10 +31,21 @@ before deploying against a real sales org's data.
   financial PII. Confirm retention limits, encryption at rest, and
   who (beyond the 3 back-office stakeholders) can access verified
   files.
-- **Google API scopes** — request the minimum scopes needed for
-  Sheets/Drive read/write access (write access is new as of PRD
-  v1.01's `update_lead_sheet` tool); avoid broad Workspace admin
-  scopes.
+- **Google API scopes** — as of Decision 026 (PRD v1.05), Sheets/Drive
+  access uses the narrower `drive.file` scope via per-rep OAuth and
+  the Google Picker, not the broader `spreadsheets`/`drive` scopes or
+  a service account — chosen partly *because* it avoids Google's
+  sensitive/restricted-scope app-verification review that the broader
+  scopes can trigger for external-facing OAuth consent screens. Still
+  worth confirming with Google's current OAuth verification
+  requirements before rep onboarding launches, since requirements
+  change; avoid broad Workspace admin scopes regardless.
+- **Per-rep OAuth consent & stored refresh tokens (new, Decision 026)** —
+  each rep grants LeadPilot access to their own Google account. Needs
+  its own privacy-notice/consent-language review (what reps are told
+  they're granting, and to what), plus encryption-at-rest for stored
+  refresh tokens (`architecture/state-schema.md`'s sketched
+  `rep_google_credentials` table) — not yet reviewed.
 - **Data ownership** — the sales org (client), not LeadPilot, likely
   owns the lead data. Document this explicitly before building any
   feature that could be read as LeadPilot retaining or reusing lead

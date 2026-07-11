@@ -17,15 +17,32 @@ evaluation criteria before any code is written.
 
 ## Current file
 
-  LeadPilot_PRD_v1.01.md — Agent Build PRD, dated 2026-07-07
+  LeadPilot_PRD_v1.05.md — Agent Build PRD, dated 2026-07-11
                            Owners: Marc Delsoin, Abdoul Ba
-                           Revises v1 with rep-approval gating, the
-                           unified spreadsheet-edit interface, the
-                           communications-search tool, and access
-                           control. Still a working draft.
+                           Reverses the Google Sheets/Drive access
+                           model from a shared service account to
+                           per-rep OAuth (`drive.file` + Google
+                           Picker), makes the hourly batch run per-rep,
+                           and adds `fetch_ad_hoc_sheet` for on-demand
+                           rep-directed sheet access. Still a working
+                           draft.
 
 ## Previous versions
 
+  LeadPilot_PRD_v1.04.md — Agent Build PRD, dated 2026-07-08
+                           Superseded by v1.05. Retires
+                           `initiate_backoffice_call`, redefines
+                           `get_contact_history` against a self-owned
+                           log, adds `log_call_outcome`.
+  LeadPilot_PRD_v1.03.md — Superseded by v1.04. Redefines
+                           `initiate_lead_call` as a clipboard handoff.
+  LeadPilot_PRD_v1.02.md — Superseded by v1.03. Adds the outreach
+                           tools and the `LeadSourceConnector`
+                           interface.
+  LeadPilot_PRD_v1.01.md — Superseded by v1.02. Adds rep-approval
+                           gating, the unified spreadsheet-edit
+                           interface, the communications-search tool,
+                           and access control.
   LeadPilot_PRD_v1.md   — Agent Build PRD, dated 2026-07-06
                            Superseded by v1.01 — kept unedited as the
                            historical starting point. Raw change notes
