@@ -2,11 +2,11 @@
 
 The standing regression suite for LeadPilot's agent behavior. Run
 after any structural modification to tool layouts, the system prompt,
-or the validation layer. Sourced from PRD v1.04 section 3d (Cases 1-6
+or the validation layer. Sourced from PRD v1.05 section 3d (Cases 1-6
 carried over from v1/v1.01, Case 7 from v1.02 updated, Case 8 from
-v1.03, Cases 9-10 new) — keep this file and the PRD in sync; if they
-diverge, this file is the one actually run, so update it first and
-note the PRD needs a refresh.
+v1.03, Cases 9-10 from v1.04, Case 11 new in v1.05) — keep this file
+and the PRD in sync; if they diverge, this file is the one actually
+run, so update it first and note the PRD needs a refresh.
 
 ## How to use
 
@@ -180,6 +180,26 @@ re-evaluates the same lead.
   `outcome: pending` and the unanswered-call follow-up rule could not
   fire for that lead — this is the negative case to confirm alongside
   the positive one
+
+**Result:** Not yet run — no implementation exists.
+
+## Case 11 — Per-rep sheet access boundary (new in v1.05)
+
+**Input:** Rep A has connected Sheets X and Y via the Google Picker
+(Decision 026). Rep B has connected only Sheet Z. Rep A runs
+`fetch_all_leads`.
+
+**Expected output:**
+- Rep A's prioritized queue contains only leads sourced from Sheets X
+  and Y — never Sheet Z, even though Sheet Z exists in the same
+  LeadPilot database under a different rep
+- If Rep A calls `fetch_ad_hoc_sheet` against Sheet Z (e.g. by
+  guessing or reusing its ID), the call fails or returns no data,
+  since Rep A's own Google OAuth grant has no access to Sheet Z —
+  LeadPilot never falls back to Rep B's stored credential or any
+  shared credential to satisfy the request
+- The same boundary holds for `verify_drive_contents`: Rep A's Drive
+  check never inspects a folder only Rep B has connected
 
 **Result:** Not yet run — no implementation exists.
 

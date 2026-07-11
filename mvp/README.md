@@ -15,7 +15,7 @@ the smallest complete version worth running against real leads.
   LeadPilot_MVP_Phase1_Checklist.md
   LeadPilot_MVP_Phase2_Checklist.md
 
-## Phase 1 MVP — derived from PRD v1.04
+## Phase 1 MVP — derived from PRD v1.05
 
 ### Core value props (must all be true to call Phase 1 done)
 
@@ -36,11 +36,14 @@ the smallest complete version worth running against real leads.
       fires without that approval; for calls, "fires" means a
       clipboard copy, not a dialed connection
 
-### Tools (ten required for Phase 1)
+### Tools (eleven required for Phase 1, updated in v1.05)
 
 - [ ] `fetch_all_leads` — Google Sheets API via `GoogleSheetsConnector`
-      (see architecture/README.md connector layer), pulls all rows
-      across designated spreadsheets
+      (see architecture/README.md connector layer), authenticated as
+      the requesting rep via per-rep OAuth (`drive.file` scope,
+      Decision 026 — **not** a service account or a static admin list).
+      Pulls rows only from sheets that rep personally connected via
+      the Google Picker
 - [ ] `get_contact_history` — reads LeadPilot's own contact-history log
       (architecture/state-schema.md); no external API, not Google Voice
 - [ ] `initiate_lead_call` — stages a recommended call; on rep approval,
@@ -51,7 +54,9 @@ the smallest complete version worth running against real leads.
       after rep approval
 - [ ] `send_lead_email` — drafts an email to the lead; stages only,
       sends after rep approval
-- [ ] `verify_drive_contents` — Google Drive API, file presence/type/size
+- [ ] `verify_drive_contents` — Google Drive API, authenticated as the
+      requesting rep (same `drive.file`/Picker consent as
+      `fetch_all_leads`, Decision 026), file presence/type/size
 - [ ] `dispatch_slack_handoff` — Slack Web API, drafts a completion
       handoff, info request, or urgent callback request to exactly 3
       stakeholder accounts; stages only, fires after rep approval —
@@ -60,11 +65,18 @@ the smallest complete version worth running against real leads.
 - [ ] `search_communications` — searches email/text history by any
       known contact identifier (email, phone, name, company)
 - [ ] `update_lead_sheet` — writes a rep-approved edit back to the
-      source sheet after a shown current-vs-proposed diff
+      source sheet after a shown current-vs-proposed diff, authenticated
+      as the approving rep (Decision 026) so Google Sheets' own
+      revision history attributes the edit to that specific rep
 - [ ] `log_call_outcome` — rep reports what happened on a call
       (answered/no answer/voicemail/didn't call); writes to the
       contact-history log; no approval token needed, since it's a
       rep-sourced fact with no external effect
+- [ ] `fetch_ad_hoc_sheet` *(new in v1.05, name provisional)* — reads a
+      single sheet the rep points LeadPilot at mid-session, via the
+      same per-rep `drive.file`/Picker consent, for a one-off lookup
+      outside the routine hourly scan; read-only, no approval token
+      needed (Decision 028)
 
 ### Prioritization logic
 
@@ -88,6 +100,11 @@ the smallest complete version worth running against real leads.
 - [ ] Authenticated-session requirement on every agent run, data view,
       and approval (see security/threat-model.md, "unauthorized agent
       access")
+- [ ] Data access guard (new in v1.05, Decision 026): `fetch_all_leads`,
+      `verify_drive_contents`, and `fetch_ad_hoc_sheet` only ever use
+      the currently authenticated rep's own stored Google credential —
+      never another rep's, never a shared/standing credential (see
+      PRD v1.05 Eval Case 11)
 
 ### Unified interface (rep-facing)
 
@@ -112,6 +129,11 @@ the smallest complete version worth running against real leads.
       a fact
 - [ ] Login/authenticated-session gate before any of the above is
       reachable
+- [ ] "Connect Google Account" flow (new in v1.05, Decision 026) — a
+      one-time OAuth consent (`drive.file` scope) plus the Google
+      Picker widget so the rep selects which sheets/folders LeadPilot
+      may access; also the entry point for `fetch_ad_hoc_sheet` when a
+      rep hands LeadPilot a sheet it hasn't seen yet
 
 ## Build order (added 2026-07-08, now that the stack is locked — Decision 022)
 
@@ -123,7 +145,23 @@ is a build sequence within Phase 1, not a different product phase.
 
 ### Step 0 — accounts and access (no code yet)
 
-- [ ] Google Cloud project + OAuth client (Sheets, Drive, Gmail scopes)
+- [x] ~~Google Cloud project + a service account (JSON key)~~ — done
+      2026-07-11 by Marc, but this access model (Decision 024) was
+      **superseded the same day by Decision 026**. The project and
+      service account created here still back the existing Step 1
+      `GoogleSheetsConnector` for local dev (see Step 1 below) until
+      Step 2 reworks it — don't delete them yet, but new work should
+      follow the item below instead
+- [ ] Google Cloud project (already created above) + OAuth consent
+      screen configured, requesting the `drive.file` scope (Sheets and
+      Drive) and the Gmail send scope (Step 2's `send_lead_email`) —
+      **not** a service account (Decision 026, reverses Decision 024).
+      Create one OAuth client ID/secret covering all three. Enable the
+      Sheets API, Drive API, and Gmail API on the project
+- [ ] Google Picker API enabled on the same project, plus its own API
+      key (`GOOGLE_PICKER_API_KEY`) — this is what lets a rep pick
+      specific sheets/folders to grant LeadPilot, rather than anything
+      being pre-shared (Decision 026)
 - [ ] Twilio account + phone number
 - [ ] Slack app registered with `chat.postMessage` scope, installed
       where the 3 back-office stakeholders are
@@ -133,7 +171,8 @@ is a build sequence within Phase 1, not a different product phase.
 ### Step 1 — foundation (no product logic yet)
 
 Done 2026-07-10 by Abdoul, on `abdouls-branch` in the `leadpilot`
-code repo (not yet merged to `main` — pending Marc's review). All four
+code repo; merged to `main` by Marc 2026-07-10 (commit `cc4c8ac`).
+All four
 items below are real, working code with passing tests against a real
 local Postgres (and the connector against a real live Google Sheet),
 not just designed on paper — see each item's test file for evidence,
@@ -163,19 +202,38 @@ per this file's own "check off only when built AND verified" rule.
       interface (PRD v1.04 section 3e) — not a direct Sheets API call
       from business logic. Authenticates via a Google service account
       rather than the `GOOGLE_OAUTH_CLIENT_ID`/`SECRET` flow
-      `commands/README.md` originally assumed for all Google access
-      (see the new decision logged below — flagging for Marc to
-      confirm). Verified against a real live test spreadsheet, not
-      mocks, in `tests/test_google_sheets_connector_live.py` — this
-      file skips automatically without
-      `GOOGLE_SERVICE_ACCOUNT_KEY_PATH` configured, so it will show
-      `SKIPPED` (not `FAILED`) on Marc's machine until he sets up his
-      own service account the same way
+      `commands/README.md` originally assumed for all Google access —
+      confirmed by Marc 2026-07-11 (Decision 024), **then superseded
+      the same day by Decision 026**: this connector needs to be
+      reworked in Step 2 to authenticate per rep via OAuth (`drive.file`
+      scope) instead of one shared service account. Still real, tested
+      code as shipped — the rework is additive scope for Step 2, not a
+      sign anything here was wrong for what it was built against.
+      Verified against a real live test spreadsheet, not mocks, in
+      `tests/test_google_sheets_connector_live.py` — this test is also
+      written against the service-account model (single global
+      `source_id`) and will need reworking alongside the connector for
+      the same reason
 
 ### Step 2 — the tools
 
-- [ ] Implement each of the 10 tools (PRD v1.04 section 3a) one at a
+- [ ] Implement each of the 11 tools (PRD v1.05 section 3a) one at a
       time, checked against its eval case as it's built, not after
+- [ ] Rework `GoogleSheetsConnector` from the shared service account
+      (Decision 024) to per-rep OAuth (`drive.file` scope, Decision
+      026) — including reworking `tests/test_google_sheets_connector_live.py`,
+      which currently assumes one global `source_id`
+- [ ] Build `verify_drive_contents` against the same per-rep OAuth
+      model from the start (Decision 026) — no service-account version
+      to retrofit later, unlike Sheets
+- [ ] Build `fetch_ad_hoc_sheet` (Decision 028) — finalize its name and
+      signature with Abdoul, wire it to the same rep-scoped connector
+- [ ] Design the `agent_run_locks` per-rep mutex (Decision 027,
+      updates Decision 025's singleton design) before the batch loop
+      goes per-rep
+- [ ] Build the `rep_google_credentials` table (shape sketched in
+      `architecture/state-schema.md`) including the encryption-at-rest
+      approach for stored refresh tokens
 - [ ] Prompt-injection validation layer (Decision 006)
 
 ### Step 3 — the interface
@@ -192,7 +250,7 @@ per this file's own "check off only when built AND verified" rule.
 ### Step 4 — wire it together and test
 
 - [ ] Render Cron Job running the full system-prompt sequence hourly
-- [ ] All 10 `testing/eval-suite.md` cases passing against the real
+- [ ] All 11 `testing/eval-suite.md` cases passing against the real
       implementation, not just designed on paper
 - [ ] Concurrency test for the approval-gate conditional update
       (Decision 021's open item, unblocked now that Postgres is chosen)
@@ -219,5 +277,5 @@ per this file's own "check off only when built AND verified" rule.
 
 - Check items off only when built AND run against the eval card in
   testing/eval-suite.md — not just coded.
-- The PRD (prd/LeadPilot_PRD_v1.04.md) is the authoritative source for
+- The PRD (prd/LeadPilot_PRD_v1.05.md) is the authoritative source for
   full feature detail; this checklist tracks completion status only.

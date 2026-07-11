@@ -125,9 +125,36 @@ indexed once it does.
 
 ## Dedup / run-lock state
 
-Not yet designed — this file's contact-history section is the first
-piece. The run-lock state needed for the "atomic state locking"
-safeguard (security/threat-model.md, duplicate-contact failure mode)
-should live alongside this once the tech stack is chosen; it needs at
-minimum a per-lead "last action committed at" timestamp checked before
-any new outreach tool call is authorized.
+Designed in Decision 025 as three tables (`lead_source_rows`,
+`lead_action_locks`, `agent_run_locks`) — see `leadpilot/models/dedup.py`,
+`leadpilot/models/run_lock.py`, and `leadpilot/locks.py` in the code
+repo, built and tested in Step 1.
+
+**Needs revisiting (Decision 027):** `agent_run_locks` was designed as
+a singleton mutex — one row, so the hourly Cron Job can't run twice
+concurrently. Now that the batch run is per-rep rather than global
+(Decision 027), this needs to become a per-rep mutex (e.g. keyed by
+`rep_id`, so rep A's run and rep B's run can proceed independently, but
+two concurrent runs for the *same* rep still can't overlap) instead of
+one lock for the whole job. Exact schema change is Step 2 work, not
+designed here yet — flagging so it isn't missed when `fetch_all_leads`
+is actually built against the per-rep model.
+
+## Rep Google credentials (new — Decision 026)
+
+Needed once Sheets/Drive access moves to per-rep OAuth. Not yet built
+— flagging the shape so Step 2 has something concrete to start from,
+not a full schema design:
+
+| Field | Type | Notes |
+|---|---|---|
+| `rep_id` | string | FK to the rep table (`leadpilot/models/rep.py`) |
+| `refresh_token` | string, encrypted at rest | The rep's Google OAuth refresh token (`drive.file` scope) — used for both on-demand `fetch_ad_hoc_sheet` calls and that rep's hourly batch run |
+| `granted_file_ids` | list of strings | Sheet/Drive file IDs the rep has selected via the Google Picker — this is what `list_sources()` (3e) enumerates for that rep |
+| `connected_at` | datetime | When the rep completed the OAuth consent |
+| `revoked_at` | datetime, nullable | Set if the rep disconnects their Google account or revokes access |
+
+Encryption-at-rest approach for `refresh_token` (KMS-backed column
+encryption vs. application-level encryption before insert) is not yet
+decided — needs to land alongside the broader secrets-management
+open item (decisions/README.md) before Step 2 builds this table.

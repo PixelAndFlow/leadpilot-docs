@@ -8,8 +8,8 @@ the rep-facing dashboard fits in.
 
 - System overview: agent runtime, tool layer, data stores, dashboard
 - Data flow: step-by-step for the hourly run cycle
-- Tool map: all ten tools, what each calls, what each returns (see
-  prd/LeadPilot_PRD_v1.04.md section 3a for the source definitions —
+- Tool map: all eleven tools, what each calls, what each returns (see
+  prd/LeadPilot_PRD_v1.05.md section 3a for the source definitions —
   keep this file in sync when tools change)
 - System prompt version history (copy of prd 3b plus any revisions)
 - Database/state schema: how contact history, sync locks, and
@@ -28,30 +28,43 @@ the rep-facing dashboard fits in.
 ## Current architecture (Phase 1 — draft, tech stack undecided)
 
 ```
-Hourly scheduler
+Hourly scheduler (now iterates once per rep who has connected a
+Google account — Decision 027, not a single global run)
       |
       v
-LeadPilot agent runtime
+LeadPilot agent runtime (running as a specific rep)
       |
-      |-- fetch_all_leads ----------> LeadSourceConnector --> Google Sheets API
-      |                                (GoogleSheetsConnector now;
-      |                                 Excel/OnlyOffice/LibreOffice/
-      |                                 OpenOffice/Docs planned later,
-      |                                 see PRD v1.02 section 3e)
+      |-- fetch_all_leads ----------> LeadSourceConnector --> Google Sheets API,
+      |                                authenticated as the requesting rep via
+      |                                OAuth (drive.file scope + Google Picker,
+      |                                Decision 026 — not a service account).
+      |                                Scoped to only the sheets that rep
+      |                                personally connected. (GoogleSheetsConnector
+      |                                now; Excel/OnlyOffice/LibreOffice/
+      |                                OpenOffice/Docs planned later, see
+      |                                PRD v1.05 section 3e)
       |-- get_contact_history ------> LeadPilot's own contact-history log
       |                                (state store — see architecture/
       |                                 state-schema.md; no external API)
-      |-- verify_drive_contents ----> Google Drive API
+      |-- verify_drive_contents ----> Google Drive API, authenticated as the
+      |                                requesting rep, same drive.file/Picker
+      |                                consent as fetch_all_leads (Decision 026)
+      |-- fetch_ad_hoc_sheet -------> LeadSourceConnector --> Google Sheets API,
+      |                                one-off read of a sheet the rep hands
+      |                                LeadPilot mid-session, same per-rep OAuth
+      |                                (new in PRD v1.05 / Decision 028)
       |-- search_communications ----> Email/SMS provider search APIs (read-only)
       |
       v
 Prioritized queue + recommended actions (JSON) --> state store (contact
-                                                     history + dedup + run-lock)
+                                                     history + dedup + run-lock,
+                                                     scoped to the requesting rep)
       |
       v
 Rep-facing unified interface (review queue, edit/approve outreach,
 inline spreadsheet editing with diff preview, communications search,
-report a call's outcome)
+report a call's outcome, connect Google account + pick sheets via
+Google Picker)
       |
       | -- rep clicks "Approve" --> mints single-use approval token
       v
@@ -61,7 +74,12 @@ report a call's outcome)
       |-- dispatch_slack_handoff ----> Slack Web API — completion handoff, info request, or
       |                                 urgent_callback_request (staged, fires only w/ valid token;
       |                                 replaces the retired initiate_backoffice_call)
-      |-- update_lead_sheet ---------> LeadSourceConnector --> Google Sheets API (staged, fires only w/ valid token)
+      |-- update_lead_sheet ---------> LeadSourceConnector --> Google Sheets API,
+      |                                 authenticated as the approving rep (Decision
+      |                                 026) — Sheets' own revision history now
+      |                                 attributes the edit to that rep, not a
+      |                                 shared service account (staged, fires only
+      |                                 w/ valid token)
 
       | -- rep reports call outcome (no token needed, rep-sourced fact) --
       v
@@ -71,7 +89,7 @@ report a call's outcome)
 ## Key architecture notes
 
 - The agent's read/prioritization sequence is fixed in the system
-  prompt (v1.04): fetch leads -> cross-reference contact history ->
+  prompt (v1.05): fetch leads -> cross-reference contact history ->
   prioritize -> verify drive contents -> draft recommended actions ->
   draft back-office handoff if complete. Any change to this sequence
   needs a decisions/ entry, since the eval card
@@ -120,6 +138,22 @@ report a call's outcome)
   a Google Docs connector needs its own lead-record data-modeling
   decision before it can be built at all (see PRD v1.02 section 3e and
   the open items in decisions/README.md).
+- **The connector is rep-scoped, not shared (Decision 026, PRD v1.05
+  section 3e).** `GoogleSheetsConnector` (and Drive access behind
+  `verify_drive_contents`) authenticates as the individual requesting
+  rep via OAuth (`drive.file` scope, sheets selected through the
+  Google Picker) — there is no single service-account-authenticated
+  instance shared across reps anymore. `list_sources()` returns only
+  what that specific rep has connected. This is a real rework of the
+  `GoogleSheetsConnector` shipped in Step 1 (which authenticated via a
+  service account, Decision 024 — now superseded), not just a config
+  change; see `mvp/README.md` Step 2.
+- **The hourly batch run is per-rep, not global (Decision 027).** The
+  Render Cron Job now iterates over every rep who has connected a
+  Google account, running the fetch/prioritize/verify/draft sequence
+  once per rep using that rep's own OAuth grant. `agent_run_locks`
+  (Decision 025) needs to move from a singleton mutex to a per-rep
+  mutex to match — flagged as Step 2 design work, not yet done.
 - Atomic state locking (decisions pending on exact implementation —
   file-based, Postgres, Redis, etc.) must commit run timestamps
   *before* tool calls are authorized, to prevent duplicate contact
@@ -140,6 +174,14 @@ change with the implementation language, but the "state store" boxes
 in it now concretely mean the shared Neon Postgres instance, read and
 written by both the Cron Job (batch run) and the Web Service
 (dashboard) — two separate containers, one database.
+
+Google Sheets/Drive access is now per-rep OAuth (Decision 026,
+supersedes Decision 024), not a service account — see tech-stack/
+stack-overview.md's "External integrations" section. The Postgres
+state store needs a new table for each rep's stored refresh token and
+Picker-granted file IDs (`rep_google_credentials` or similar — see
+architecture/state-schema.md), and the Cron Job's batch run is now
+per-rep (Decision 027).
 
 ## Notes
 
