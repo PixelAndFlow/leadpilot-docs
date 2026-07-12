@@ -253,12 +253,14 @@ per this file's own "check off only when built AND verified" rule.
 [PR #4](https://github.com/abdoulk30/LeadPilot/pull/4) in the code
 repo (open, pending Marc's review). This is groundwork the 11 tools
 below build on, not any of the tools themselves — real, tested code,
-not designed on paper. **99 passed, 0 skipped** as of 2026-07-12 (83 at
-foundation completion; `fetch_all_leads`, `fetch_ad_hoc_sheet`, and
-`update_lead_sheet` have been built since), including the full real
-OAuth flow verified live end to end by a human (connect → consent →
-Picker → grant-file → real Sheets API read/write) — not just designed
-or tested in isolation.
+not designed on paper. **103 passed, 1 skipped** as of 2026-07-12 (83
+at foundation completion; `fetch_all_leads`, `fetch_ad_hoc_sheet`,
+`update_lead_sheet`, and `verify_drive_contents` have been built
+since), including the full real OAuth flow verified live end to end by
+a human (connect → consent → Picker → grant-file → real Sheets API
+read/write) — not just designed or tested in isolation. The one skip
+is `verify_drive_contents`' live test, waiting on a rep granting a real
+Drive folder via `/dev/picker-test`'s new folder-picker button.
 
 - [x] Build the `rep_google_credentials` table (shape sketched in
       `architecture/state-schema.md`) including the encryption-at-rest
@@ -328,10 +330,22 @@ Twilio credential check changed the `send_lead_text` reasoning).
       which would've silently broken every tool-registration test
       after it in file-execution order (including future tools, not
       just this one) — see `leadpilot/tools/base.py`
-- [ ] `verify_drive_contents` — same per-rep OAuth model as Sheets
+- [x] `verify_drive_contents` — same per-rep OAuth model as Sheets
       (Decision 026), but Drive API, not Sheets API — no
       service-account version to retrofit, built rep-scoped from the
-      start
+      start. Not built against the `LeadSourceConnector` interface
+      (that's for lead-row sources); gets its own minimal
+      `DriveContentsClient` interface (`GoogleDriveClient`) since
+      "list a folder's contents" is a different shape of operation
+      than fetch/dedup/write-a-row. `leadpilot/connectors/google_drive.py`
+      + `leadpilot/tools/verify_drive_contents.py`, tested in
+      `tests/test_verify_drive_contents.py` (4 tests against a fake
+      client; the live test against a real connected rep is currently
+      the one skip in the suite — see below). Extended
+      `/dev/picker-test` with a second button
+      (`DocsView(FOLDERS).setSelectFolderEnabled(true)`) so a rep can
+      actually grant a Drive folder through the real Picker, not just
+      a sheet — that's the only way this tool's live test can un-skip
 - [x] `fetch_ad_hoc_sheet` (Decision 028) — no run-lock (one-off
       lookup, not the batch cycle); doesn't trigger the Google Picker
       itself, just lets `GoogleSheetsConnector`'s own "not granted"
