@@ -40,7 +40,6 @@ chosen (tech-stack/README.md, commands/README.md).
   Once Step 2 reworks the connector for per-rep OAuth, this key and
   its rotation procedure (generating a new service-account key in
   Google Cloud Console) go away entirely
-- `GOOGLE_VOICE_API_KEY` (or equivalent — pending research/README.md)
 - `SLACK_BOT_TOKEN`
 
 ## Rotation triggers
