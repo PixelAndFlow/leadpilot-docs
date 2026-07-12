@@ -295,6 +295,13 @@ Twilio credential check changed the `send_lead_text` reasoning).
       shares most of its code with `fetch_all_leads` (same connector,
       different entry point) — keeping both with the same person
       avoids duplicated/inconsistent Sheets-reading logic
+- [ ] Design the `agent_run_locks` per-rep mutex (Decision 027,
+      updates Decision 025's singleton design) — moved here 2026-07-12
+      (was Marc's, see the strikethrough note below); the mutex exists
+      specifically to stop the *same rep's* `fetch_all_leads` batch
+      run from overlapping with itself, per `architecture/
+      state-schema.md`'s own note when this was first flagged — that
+      makes it Abdoul's, not a general outreach concern
 - [ ] `log_call_outcome` — writes to the existing `contact_history`
       log; no external API. **Depends on `initiate_lead_call`
       (Marc's)** — takes an `event_id` directly and validates
@@ -332,11 +339,13 @@ Twilio credential check changed the `send_lead_text` reasoning).
       Token). Fixing the Twilio credentials/verified-number question
       is a prerequisite for live-testing this tool, independent of who
       builds it
-- [ ] Design the `agent_run_locks` per-rep mutex (Decision 027,
-      updates Decision 025's singleton design) before the batch loop
-      goes per-rep — not tied to a specific tool, grouped here since
-      it's closer to Marc's outreach-tool work than Abdoul's
-      Sheets/Drive work
+- [ ] ~~Design the `agent_run_locks` per-rep mutex~~ — **moved to
+      Group A 2026-07-12.** Originally grouped here as "not tied to a
+      specific tool," but it specifically gates `fetch_all_leads`'s
+      per-rep batch loop (see `architecture/state-schema.md`'s own
+      note from when this was first flagged) — that's Abdoul's tool
+      as of Decision 032, so this belongs with him too. Caught by
+      Marc's own Claude session reviewing the corrected split.
 
 **Neither group — do this before/alongside either, whoever gets to it
 first:**
