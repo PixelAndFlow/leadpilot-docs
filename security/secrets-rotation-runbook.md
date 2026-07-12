@@ -12,9 +12,20 @@ chosen (tech-stack/README.md, commands/README.md).
   Cloud Console; existing reps' stored refresh tokens are unaffected
   by rotating the client secret itself
 - `GOOGLE_PICKER_API_KEY` — client-side key for the Google Picker
-  widget (Decision 026). Lower sensitivity than the OAuth client
-  secret (it's exposed to the browser by design), but still tracked
-  here and rotatable independently
+  widget (Decision 026). Unlike every other secret in this list, this
+  one can't actually be kept confidential: the Picker widget runs in
+  the rep's own browser, so the key has to ship inside the page's
+  JavaScript, visible to anyone who opens dev tools, views page
+  source, or inspects network requests. Rotation and confidentiality
+  don't do the protective work here — restriction does. Created
+  2026-07-11 (`LeadPilot_Google_Picker`) with two restrictions instead:
+  API restriction limited to the Google Picker API only (so a copied
+  key can't be used to call any other Google API on this project), and
+  application restriction limited to specific website referrers
+  (`http://localhost:8000/*` for now, the real domain once deployed —
+  Google rejects calls using this key from any other origin). Still
+  tracked here and rotatable independently, but "rotation" matters less
+  for this key than getting the restrictions right
 - **Per-rep OAuth refresh tokens** (new, Decision 026) — not a single
   static secret. Each rep's refresh token is stored encrypted in
   Postgres (`rep_google_credentials`, see architecture/state-schema.md),

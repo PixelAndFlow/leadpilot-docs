@@ -145,6 +145,10 @@ is a build sequence within Phase 1, not a different product phase.
 
 ### Step 0 — accounts and access (no code yet)
 
+Fully done 2026-07-11 by Marc. All five items below are real accounts
+with real credentials obtained, not just planned — see each item for
+specifics.
+
 - [x] ~~Google Cloud project + a service account (JSON key)~~ — done
       2026-07-11 by Marc, but this access model (Decision 024) was
       **superseded the same day by Decision 026**. The project and
@@ -152,21 +156,49 @@ is a build sequence within Phase 1, not a different product phase.
       `GoogleSheetsConnector` for local dev (see Step 1 below) until
       Step 2 reworks it — don't delete them yet, but new work should
       follow the item below instead
-- [ ] Google Cloud project (already created above) + OAuth consent
+- [x] Google Cloud project (already created above) + OAuth consent
       screen configured, requesting the `drive.file` scope (Sheets and
       Drive) and the Gmail send scope (Step 2's `send_lead_email`) —
       **not** a service account (Decision 026, reverses Decision 024).
-      Create one OAuth client ID/secret covering all three. Enable the
-      Sheets API, Drive API, and Gmail API on the project
-- [ ] Google Picker API enabled on the same project, plus its own API
-      key (`GOOGLE_PICKER_API_KEY`) — this is what lets a rep pick
-      specific sheets/folders to grant LeadPilot, rather than anything
-      being pre-shared (Decision 026)
-- [ ] Twilio account + phone number
-- [ ] Slack app registered with `chat.postMessage` scope, installed
-      where the 3 back-office stakeholders are
-- [ ] Neon Postgres project (dev + prod)
-- [ ] Render account, GitHub repo connected for auto-deploy
+      Created one OAuth client ID/secret (`LeadPilot Web`, web
+      application type) covering all three. Sheets API, Drive API, and
+      Gmail API all enabled on the project. Done 2026-07-11 by Marc —
+      external user type, test users added (Marc + Abdoul) since the
+      app stays in Testing publishing status for now, not submitted
+      for Google's verification
+- [x] Google Picker API enabled on the same project (`LeadPilot_Google_Picker`
+      API key, restricted to the Picker API only and to
+      `http://localhost:8000/*` as an allowed website referrer for
+      now) — this is what lets a rep pick specific sheets/folders to
+      grant LeadPilot, rather than anything being pre-shared (Decision
+      026). Done 2026-07-11 by Marc
+- [x] Twilio account + phone number — free trial account, trial number
+      auto-assigned (no purchase needed). Account SID and Auth Token
+      obtained from the console dashboard. Trial limitation to note
+      for Step 2 testing: can only call/text verified numbers until
+      the account is upgraded
+- [x] Slack app registered with `chat.postMessage` scope, installed
+      where the 3 back-office stakeholders are — app created
+      (`LeadPilot`), `chat:write` bot token scope added, installed to
+      the workspace, Bot User OAuth Token (`xoxb-...`) obtained. Real
+      3-stakeholder channel/DM list not finalized yet (business
+      decision, not a Step 0 blocker) — a single test channel was
+      created and its channel ID captured as a placeholder for local
+      testing
+- [x] Neon Postgres project (dev + prod) — project `leadpilot` created;
+      dev/prod split done via Neon's branching feature (a `dev` branch
+      off the default/production branch) rather than two separate
+      projects, so both share one project's infra. Connection strings
+      obtained for both branches
+- [x] Render account, GitHub repo connected for auto-deploy — signed
+      up via GitHub, Render's GitHub App already had sufficient access
+      to `abdoulk30/LeadPilot` with no extra approval needed from
+      Abdoul (confirmed by reaching the "New Web Service" source-code
+      screen, which showed the repo connected with Python auto-detected
+      and `main` pre-selected). Project `LeadPilot` created with a
+      `Production` environment, ready for Step 4 — the actual Web
+      Service/Cron Job aren't created yet, intentionally, since there's
+      no real functionality to deploy until Step 2
 
 ### Step 1 — foundation (no product logic yet)
 
