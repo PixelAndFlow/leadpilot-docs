@@ -252,9 +252,11 @@ per this file's own "check off only when built AND verified" rule.
 **Foundation done 2026-07-12 by Abdoul, on `abdouls-branch`** — see
 [PR #4](https://github.com/abdoulk30/LeadPilot/pull/4) in the code
 repo (open, pending Marc's review). This is groundwork the 11 tools
-below build on, not any of the tools themselves — real, tested code
-(60 passing, 4 skipped pending live OAuth verification — see the PR
-description), not designed on paper:
+below build on, not any of the tools themselves — real, tested code,
+not designed on paper. **83 passed, 0 skipped** as of 2026-07-12,
+including the full real OAuth flow verified live end to end by a human
+(connect → consent → Picker → grant-file → real Sheets API read/write)
+— not just designed or tested in isolation.
 
 - [x] Build the `rep_google_credentials` table (shape sketched in
       `architecture/state-schema.md`) including the encryption-at-rest
@@ -266,15 +268,29 @@ description), not designed on paper:
       which used to assume one global `source_id`
 - [x] Google OAuth connect/callback/access-token/grant-file endpoints
       — the actual "Connect Google Account" backend Step 3 needs.
-      **Live end-to-end verification still pending** — blocked on
-      Abdoul's Google account not being on the OAuth test-user
-      allowlist (a Google Cloud Console config issue, confirmed
-      unrelated to the code itself)
+      **Live end-to-end verification complete 2026-07-12.** Two real
+      bugs caught and fixed getting here, both worth knowing before
+      touching this code: (1) `google-auth-oauthlib`'s `Flow` generates
+      a PKCE `code_verifier` per instance, and `/connect`/`/callback`
+      are separate requests each building a fresh `Flow` — the
+      verifier was being discarded the moment `/connect` returned,
+      fixed by carrying it in a signed cookie the same way `state`
+      already was; (2) the Picker widget was missing
+      `.setAppId(<project number>)` — without it, Picker still shows
+      real files and fires a real "picked" callback with a valid file
+      ID (looks fully successful), but Google never actually registers
+      the `drive.file` grant server-side, so the access token still
+      can't read the file afterward (404, proven not to be a code bug
+      by bypassing the connector with a raw `curl` call using the same
+      token and getting the identical error straight from Google)
 - [x] Tool-registration scaffold (`leadpilot/tools/base.py`,
       `registry.py`) — auto-discovery via `pkgutil`, so adding a tool
       file never requires editing a shared list. Built specifically so
       the split below doesn't create merge conflicts between Marc and
       Abdoul working in parallel
+- [x] `/dev/picker-test` — a minimal, dev-only harness (gated behind
+      `ENVIRONMENT`) so Step 2 tools can be tested against real
+      Picker-granted files ahead of Step 3's actual UI existing
 
 **Remaining — split 2026-07-12, Abdoul building 5, Marc building 6**
 (see decisions/README.md **Decision 032**, which supersedes Decision
@@ -283,9 +299,16 @@ Claude session without visibility into this session's context, and a
 Twilio credential check changed the `send_lead_text` reasoning).
 
 **Group A — Abdoul (Sheets/Drive + `log_call_outcome`, 5 tools):**
-- [ ] `fetch_all_leads` — through the now-rep-scoped `GoogleSheetsConnector`
+- [x] `fetch_all_leads` — through the now-rep-scoped `GoogleSheetsConnector`.
+      Real dedup logic (matches existing leads by phone, then email —
+      Eval Case 2), wrapped in the per-rep `agent_run_locks` mutex.
+      `leadpilot/tools/fetch_all_leads.py`, tested in
+      `tests/test_fetch_all_leads.py` (11 tests against a fake
+      connector for dedup/lock logic, plus one live test against the
+      real connected rep — all passing as of 2026-07-12)
 - [ ] `update_lead_sheet` — ditto; connector's `stage_field_write`/
-      `commit_field_write` already built and tested, tool-level
+      `commit_field_write` already built, tested, and live-verified
+      (real write + revert against the actual sheet), tool-level
       wrapper (calling `gate.try_execute` first) not yet written
 - [ ] `verify_drive_contents` — same per-rep OAuth model as Sheets
       (Decision 026), but Drive API, not Sheets API — no
@@ -295,13 +318,17 @@ Twilio credential check changed the `send_lead_text` reasoning).
       shares most of its code with `fetch_all_leads` (same connector,
       different entry point) — keeping both with the same person
       avoids duplicated/inconsistent Sheets-reading logic
-- [ ] Design the `agent_run_locks` per-rep mutex (Decision 027,
+- [x] Design the `agent_run_locks` per-rep mutex (Decision 027,
       updates Decision 025's singleton design) — moved here 2026-07-12
       (was Marc's, see the strikethrough note below); the mutex exists
       specifically to stop the *same rep's* `fetch_all_leads` batch
       run from overlapping with itself, per `architecture/
       state-schema.md`'s own note when this was first flagged — that
-      makes it Abdoul's, not a general outreach concern
+      makes it Abdoul's, not a general outreach concern.
+      `leadpilot/models/run_lock.py`/`locks.py`, tested in
+      `tests/test_locks.py` including a test proving two different
+      reps' runs never block each other (the actual point of the
+      rework) and a real concurrency test
 - [ ] `log_call_outcome` — writes to the existing `contact_history`
       log; no external API. **Depends on `initiate_lead_call`
       (Marc's)** — takes an `event_id` directly and validates
