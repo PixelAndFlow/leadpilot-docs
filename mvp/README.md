@@ -314,10 +314,15 @@ Twilio credential check changed the `send_lead_text` reasoning).
       (Decision 026), but Drive API, not Sheets API — no
       service-account version to retrofit, built rep-scoped from the
       start
-- [ ] `fetch_ad_hoc_sheet` (Decision 028) — finalize name/signature,
-      shares most of its code with `fetch_all_leads` (same connector,
-      different entry point) — keeping both with the same person
-      avoids duplicated/inconsistent Sheets-reading logic
+- [x] `fetch_ad_hoc_sheet` (Decision 028) — no run-lock (one-off
+      lookup, not the batch cycle); doesn't trigger the Google Picker
+      itself, just lets `GoogleSheetsConnector`'s own "not granted"
+      validation surface naturally for whatever calls it to handle.
+      Shared dedup/upsert logic with `fetch_all_leads` extracted into
+      `leadpilot/lead_ingest.py` rather than duplicated.
+      `leadpilot/tools/fetch_ad_hoc_sheet.py`, tested in
+      `tests/test_fetch_ad_hoc_sheet.py` (7 tests, including a live
+      one against the real connected rep — passing 2026-07-12)
 - [x] Design the `agent_run_locks` per-rep mutex (Decision 027,
       updates Decision 025's singleton design) — moved here 2026-07-12
       (was Marc's, see the strikethrough note below); the mutex exists
