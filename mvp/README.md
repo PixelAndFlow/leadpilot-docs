@@ -253,10 +253,12 @@ per this file's own "check off only when built AND verified" rule.
 [PR #4](https://github.com/abdoulk30/LeadPilot/pull/4) in the code
 repo (open, pending Marc's review). This is groundwork the 11 tools
 below build on, not any of the tools themselves — real, tested code,
-not designed on paper. **83 passed, 0 skipped** as of 2026-07-12,
-including the full real OAuth flow verified live end to end by a human
-(connect → consent → Picker → grant-file → real Sheets API read/write)
-— not just designed or tested in isolation.
+not designed on paper. **99 passed, 0 skipped** as of 2026-07-12 (83 at
+foundation completion; `fetch_all_leads`, `fetch_ad_hoc_sheet`, and
+`update_lead_sheet` have been built since), including the full real
+OAuth flow verified live end to end by a human (connect → consent →
+Picker → grant-file → real Sheets API read/write) — not just designed
+or tested in isolation.
 
 - [x] Build the `rep_google_credentials` table (shape sketched in
       `architecture/state-schema.md`) including the encryption-at-rest
@@ -306,10 +308,26 @@ Twilio credential check changed the `send_lead_text` reasoning).
       `tests/test_fetch_all_leads.py` (11 tests against a fake
       connector for dedup/lock logic, plus one live test against the
       real connected rep — all passing as of 2026-07-12)
-- [ ] `update_lead_sheet` — ditto; connector's `stage_field_write`/
-      `commit_field_write` already built, tested, and live-verified
-      (real write + revert against the actual sheet), tool-level
-      wrapper (calling `gate.try_execute` first) not yet written
+- [x] `update_lead_sheet` — split into `run()` (the `@tool` the agent
+      calls: computes the diff via `connector.stage_field_write()`,
+      drops a `contact_history` row at `awaiting_rep_approval`) and a
+      separate `execute()` (called after the rep's approval — Step
+      3/interface territory, doesn't exist yet — re-checks
+      `gate.try_execute()` itself, then performs the real write via
+      `connector.commit_field_write()`, authenticated as the
+      *approving* rep so Google's own revision history attributes it
+      correctly). `leadpilot/tools/update_lead_sheet.py`, tested in
+      `tests/test_update_lead_sheet.py` (9 tests: staging, gated
+      execution, single-use-under-real-concurrency using 10 real
+      parallel DB connections — same rigor as `gate.py`'s own
+      concurrency test — plus a live test that performed a real
+      round-trip write against the actual connected sheet — all
+      passing as of 2026-07-12). Also fixed a real pre-existing bug
+      found while adding this tool's test: `test_tools_registry.py`'s
+      cleanup fixture cleared the tool registry without restoring it,
+      which would've silently broken every tool-registration test
+      after it in file-execution order (including future tools, not
+      just this one) — see `leadpilot/tools/base.py`
 - [ ] `verify_drive_contents` — same per-rep OAuth model as Sheets
       (Decision 026), but Drive API, not Sheets API — no
       service-account version to retrofit, built rep-scoped from the
