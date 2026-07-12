@@ -249,24 +249,87 @@ per this file's own "check off only when built AND verified" rule.
 
 ### Step 2 — the tools
 
-- [ ] Implement each of the 11 tools (PRD v1.05 section 3a) one at a
-      time, checked against its eval case as it's built, not after
-- [ ] Rework `GoogleSheetsConnector` from the shared service account
+**Foundation done 2026-07-12 by Abdoul, on `abdouls-branch`** — see
+[PR #4](https://github.com/abdoulk30/LeadPilot/pull/4) in the code
+repo (open, pending Marc's review). This is groundwork the 11 tools
+below build on, not any of the tools themselves — real, tested code
+(60 passing, 4 skipped pending live OAuth verification — see the PR
+description), not designed on paper:
+
+- [x] Build the `rep_google_credentials` table (shape sketched in
+      `architecture/state-schema.md`) including the encryption-at-rest
+      approach for stored refresh tokens — Fernet, application-level,
+      logged as Decision 029 (flagged for Marc's confirmation)
+- [x] Rework `GoogleSheetsConnector` from the shared service account
       (Decision 024) to per-rep OAuth (`drive.file` scope, Decision
       026) — including reworking `tests/test_google_sheets_connector_live.py`,
-      which currently assumes one global `source_id`
-- [ ] Build `verify_drive_contents` against the same per-rep OAuth
-      model from the start (Decision 026) — no service-account version
-      to retrofit later, unlike Sheets
-- [ ] Build `fetch_ad_hoc_sheet` (Decision 028) — finalize its name and
-      signature with Abdoul, wire it to the same rep-scoped connector
+      which used to assume one global `source_id`
+- [x] Google OAuth connect/callback/access-token/grant-file endpoints
+      — the actual "Connect Google Account" backend Step 3 needs.
+      **Live end-to-end verification still pending** — blocked on
+      Abdoul's Google account not being on the OAuth test-user
+      allowlist (a Google Cloud Console config issue, confirmed
+      unrelated to the code itself)
+- [x] Tool-registration scaffold (`leadpilot/tools/base.py`,
+      `registry.py`) — auto-discovery via `pkgutil`, so adding a tool
+      file never requires editing a shared list. Built specifically so
+      the split below doesn't create merge conflicts between Marc and
+      Abdoul working in parallel
+
+**Remaining — split 2026-07-12, Marc building 6, Abdoul building 5,**
+grouped by real dependency, not an arbitrary count (see decisions/README.md
+Decision 030 for the reasoning): the two tools that share
+`initiate_lead_call`'s row-matching logic stay together, and the two
+tools that need a not-yet-added Gmail OAuth scope stay together, so
+neither pairing gets split across two people mid-build.
+
+**Group A — Abdoul (Sheets/Drive + read-only, 5 tools):**
+- [ ] `fetch_all_leads` — through the now-rep-scoped `GoogleSheetsConnector`
+- [ ] `update_lead_sheet` — ditto; connector's `stage_field_write`/
+      `commit_field_write` already built and tested, tool-level
+      wrapper (calling `gate.try_execute` first) not yet written
+- [ ] `verify_drive_contents` — same per-rep OAuth model as Sheets
+      (Decision 026), but Drive API, not Sheets API — no
+      service-account version to retrofit, built rep-scoped from the
+      start
+- [ ] `fetch_ad_hoc_sheet` (Decision 028) — finalize name/signature,
+      shares most of its code with `fetch_all_leads` (same connector,
+      different entry point) — keeping both with the same person
+      avoids duplicated/inconsistent Sheets-reading logic
+- [ ] `get_contact_history` — reads the existing `contact_history`
+      log; no external API, no dependency on any other tool
+
+**Group B — Marc (outreach + communication APIs, 6 tools):**
+- [ ] `initiate_lead_call` — clipboard handoff (Decision 016), no
+      external API
+- [ ] `log_call_outcome` — **depends on `initiate_lead_call`**: it
+      finds and updates the specific `contact_history` row
+      `initiate_lead_call` created (`Tool.INITIATE_LEAD_CALL`), so
+      needs that tool's exact row-matching behavior settled first —
+      keeping both with the same person avoids building the second
+      one against a guess
+- [ ] `send_lead_text` — Twilio
+- [ ] `dispatch_slack_handoff` — Slack, all three message types
+- [ ] `send_lead_email` — Gmail. **Needs a Gmail OAuth scope added to
+      `leadpilot/google_oauth.py`'s `SCOPES` list**, which currently
+      only requests `drive.file` — this is the one shared-infra file
+      either of these two tools would need to touch, so keeping both
+      with the same person means it's edited once, not twice.
+      Also: reps who connect before this scope is added will need to
+      reconnect to grant Gmail access — decide the final scope list
+      before doing much live testing, not incrementally
+- [ ] `search_communications` — Twilio (SMS) + Gmail (email search) —
+      same Gmail-scope dependency as `send_lead_email` above
 - [ ] Design the `agent_run_locks` per-rep mutex (Decision 027,
       updates Decision 025's singleton design) before the batch loop
-      goes per-rep
-- [ ] Build the `rep_google_credentials` table (shape sketched in
-      `architecture/state-schema.md`) including the encryption-at-rest
-      approach for stored refresh tokens
-- [ ] Prompt-injection validation layer (Decision 006)
+      goes per-rep — not tied to a specific tool, grouped here since
+      it's closer to Marc's outreach-tool work than Abdoul's
+      Sheets/Drive work
+
+**Neither group — do this before/alongside either, whoever gets to it
+first:**
+- [ ] Prompt-injection validation layer (Decision 006) — cross-cutting,
+      not owned by either tool group
 
 ### Step 3 — the interface
 
