@@ -88,6 +88,35 @@ data-exposure surface and hasn't had a compliance/retention review.
 Impact: Should be resolved before this tool is used against real
 client data — see compliance/README.md.
 
+## Issue 005 — Twilio trial account blocks phone-number API endpoints
+
+Opened: 2026-07-12
+Status: Open
+Description: Marc's Twilio trial credentials (`TWILIO_ACCOUNT_SID`/
+`TWILIO_AUTH_TOKEN`) authenticate fine against the base Account
+resource (`GET /Accounts/{SID}.json` → 200, account status `active`,
+type `Trial`) — this resolves the plain 401 flagged in Decision 032's
+commit message. But the same credentials return `401 Policy
+evaluation failed` against `IncomingPhoneNumbers` and
+`OutgoingCallerIds`, the two endpoints needed to confirm
+`TWILIO_FROM_NUMBER` is actually owned by the account and to check
+which recipient numbers are verified (trial accounts can only send to
+verified numbers). Reproduced identically on two unrelated networks,
+which rules out a local firewall/DLP/VPN intercepting the request —
+this points at something on Twilio's account side, not a network or
+credentials-formatting problem. Root cause not yet confirmed; "Policy
+evaluation failed" doesn't match any documented Twilio error code, so
+this needs either the Twilio Console UI checked directly for an
+account-restriction/verification banner, or Twilio support contacted
+with the exact error string.
+Impact: Blocks `send_lead_text` and the SMS half of
+`search_communications` (both Marc's, Group B per Decision 032) from
+being built against real Twilio calls until resolved. Does not block
+Marc's other four Group B tools (`get_contact_history`,
+`initiate_lead_call`, `dispatch_slack_handoff`, `send_lead_email`) or
+any of Abdoul's Group A tools — recommend building those first while
+this is being sorted out with Twilio.
+
 ## Notes
 
 - Move an issue to "Resolved" and reference the decisions/ entry that
