@@ -276,14 +276,13 @@ description), not designed on paper:
       the split below doesn't create merge conflicts between Marc and
       Abdoul working in parallel
 
-**Remaining — split 2026-07-12, Marc building 6, Abdoul building 5,**
-grouped by real dependency, not an arbitrary count (see decisions/README.md
-Decision 030 for the reasoning): the two tools that share
-`initiate_lead_call`'s row-matching logic stay together, and the two
-tools that need a not-yet-added Gmail OAuth scope stay together, so
-neither pairing gets split across two people mid-build.
+**Remaining — split 2026-07-12, Abdoul building 5, Marc building 6**
+(see decisions/README.md **Decision 032**, which supersedes Decision
+030 — same day, after Marc proposed a conflicting split via his own
+Claude session without visibility into this session's context, and a
+Twilio credential check changed the `send_lead_text` reasoning).
 
-**Group A — Abdoul (Sheets/Drive + read-only, 5 tools):**
+**Group A — Abdoul (Sheets/Drive + `log_call_outcome`, 5 tools):**
 - [ ] `fetch_all_leads` — through the now-rep-scoped `GoogleSheetsConnector`
 - [ ] `update_lead_sheet` — ditto; connector's `stage_field_write`/
       `commit_field_write` already built and tested, tool-level
@@ -296,20 +295,23 @@ neither pairing gets split across two people mid-build.
       shares most of its code with `fetch_all_leads` (same connector,
       different entry point) — keeping both with the same person
       avoids duplicated/inconsistent Sheets-reading logic
+- [ ] `log_call_outcome` — writes to the existing `contact_history`
+      log; no external API. **Depends on `initiate_lead_call`
+      (Marc's)** — takes an `event_id` directly and validates
+      `tool=INITIATE_LEAD_CALL`, `stage=EXECUTED`, `outcome=PENDING`
+      before writing (exact contract:
+      `architecture/state-schema.md`, "Outcome visibility" section) —
+      build against that written contract, not
+      `initiate_lead_call`'s actual implementation
+
+**Group B — Marc (read-only + outreach/communication APIs, 6 tools):**
 - [ ] `get_contact_history` — reads the existing `contact_history`
       log; no external API, no dependency on any other tool
-
-**Group B — Marc (outreach + communication APIs, 6 tools):**
 - [ ] `initiate_lead_call` — clipboard handoff (Decision 016), no
-      external API
-- [ ] `log_call_outcome` — **depends on `initiate_lead_call`**: it
-      finds and updates the specific `contact_history` row
-      `initiate_lead_call` created (`Tool.INITIATE_LEAD_CALL`), so
-      needs that tool's exact row-matching behavior settled first —
-      keeping both with the same person avoids building the second
-      one against a guess
-- [ ] `send_lead_text` — Twilio
-- [ ] `dispatch_slack_handoff` — Slack, all three message types
+      external API. `log_call_outcome` (Abdoul's) depends on the
+      `contact_history` row this creates — see the written contract
+      referenced above; matching it doesn't require coordinating with
+      Abdoul beyond reading that section
 - [ ] `send_lead_email` — Gmail. **Needs a Gmail OAuth scope added to
       `leadpilot/google_oauth.py`'s `SCOPES` list**, which currently
       only requests `drive.file` — this is the one shared-infra file
@@ -318,8 +320,18 @@ neither pairing gets split across two people mid-build.
       Also: reps who connect before this scope is added will need to
       reconnect to grant Gmail access — decide the final scope list
       before doing much live testing, not incrementally
+- [ ] `dispatch_slack_handoff` — Slack, all three message types
 - [ ] `search_communications` — Twilio (SMS) + Gmail (email search) —
       same Gmail-scope dependency as `send_lead_email` above
+- [ ] `send_lead_text` — Twilio. Originally considered for Abdoul's
+      side on the assumption his phone was the Twilio trial account's
+      verified caller ID — that assumption was never actually
+      confirmed, and a real API check against the credentials in
+      `.env.local` turned up a 401 authentication failure (still
+      unresolved with Marc as of this split — possibly a rotated Auth
+      Token). Fixing the Twilio credentials/verified-number question
+      is a prerequisite for live-testing this tool, independent of who
+      builds it
 - [ ] Design the `agent_run_locks` per-rep mutex (Decision 027,
       updates Decision 025's singleton design) before the batch loop
       goes per-rep — not tied to a specific tool, grouped here since

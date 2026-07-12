@@ -112,6 +112,34 @@ the positive and negative case). Texts, emails, and Slack handoffs are
 unaffected since their outcomes come back automatically from their
 provider APIs.
 
+**Exact row-matching contract (written down 2026-07-12, since
+`initiate_lead_call` and `log_call_outcome` are being built by
+different people — Decision 030):** `log_call_outcome` takes an
+`event_id` directly, the same `contact_history.event_id` the rep is
+looking at in their queue — it does **not** look a row up by
+`lead_id` and guess which one. This sidesteps the ambiguity a
+lead-based lookup would have (which of possibly several past calls for
+this lead is "the" pending one?) the same way `gate.py`'s
+`approve`/`try_execute`/`reject` already operate on a specific
+`event_id`, not by inferring one from `lead_id`.
+
+Before writing `outcome`/`note`, `log_call_outcome` must verify all
+three of:
+- `tool == Tool.INITIATE_LEAD_CALL`
+- `stage == Stage.EXECUTED`
+- `outcome == Outcome.PENDING`
+
+If any of those don't hold — wrong tool, not yet executed, or already
+has a real outcome logged — reject the call rather than silently
+overwriting a row that isn't a fresh, pending call handoff. This is
+the entire coordination surface between the two tools: as long as
+`initiate_lead_call` creates its row with `tool=INITIATE_LEAD_CALL`
+and (once executed) `outcome=PENDING` — both already fixed by the
+existing `Tool`/`Outcome` enums in `contact_history.py`, not new for
+this — `log_call_outcome` can be built and tested independently
+against this contract, without needing `initiate_lead_call`'s actual
+implementation to exist first.
+
 ## Storage
 
 Not tied to a specific database — tech stack is still undecided
