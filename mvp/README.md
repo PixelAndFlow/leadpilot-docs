@@ -391,14 +391,24 @@ Twilio credential check changed the `send_lead_text` reasoning).
       `tests/test_locks.py` including a test proving two different
       reps' runs never block each other (the actual point of the
       rework) and a real concurrency test
-- [ ] `log_call_outcome` — writes to the existing `contact_history`
-      log; no external API. **Depends on `initiate_lead_call`
-      (Marc's)** — takes an `event_id` directly and validates
-      `tool=INITIATE_LEAD_CALL`, `stage=EXECUTED`, `outcome=PENDING`
-      before writing (exact contract:
-      `architecture/state-schema.md`, "Outcome visibility" section) —
-      build against that written contract, not
-      `initiate_lead_call`'s actual implementation
+- [x] `log_call_outcome` — writes to the existing `contact_history`
+      log; no external API, no approval gate (rep-reported fact about
+      a call they placed themselves). Takes an `event_id` directly and
+      validates `tool=INITIATE_LEAD_CALL`, `stage=EXECUTED`,
+      `outcome=PENDING` before writing (exact contract:
+      `architecture/state-schema.md`, "Outcome visibility" section).
+      Built and fully tested against that written contract before
+      `initiate_lead_call`'s (Marc's) actual implementation exists —
+      tests construct the `contact_history` row directly per the
+      contract, proving the two tools really are independently
+      buildable as designed. `leadpilot/tools/log_call_outcome.py`,
+      tested in `tests/test_log_call_outcome.py` (15 tests: every
+      rep-reportable outcome, rejects provider-only outcomes
+      (`delivered`/`failed`) and `pending`, rejects wrong tool/stage/
+      already-logged states — all passing as of 2026-07-12)
+
+**Group A complete as of 2026-07-12 — all 5 tools built, tested, and
+live-verified where a live path exists.** 121 passed, 0 skipped.
 
 **Group B — Marc (read-only + outreach/communication APIs, 6 tools):**
 - [ ] `get_contact_history` — reads the existing `contact_history`

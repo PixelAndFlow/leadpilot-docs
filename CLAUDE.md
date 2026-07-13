@@ -72,8 +72,8 @@ material from here into public-facing content.
 - Decisions log: through Decision 033.
 - Build order: Step 0 (accounts/access) complete; Step 1 (foundation)
   merged to `main` in the code repo; Step 2 (the tools) in progress —
-  Group A (Abdoul): `fetch_all_leads`, `fetch_ad_hoc_sheet`,
-  `update_lead_sheet`, `verify_drive_contents` done and live-tested;
-  `log_call_outcome` remaining. Group B (Marc): not started as of this
-  writing. See `mvp/README.md`'s Step 2 section for evidence/test
-  counts per tool.
+  **Group A (Abdoul) complete**: all 5 tools (`fetch_all_leads`,
+  `fetch_ad_hoc_sheet`, `update_lead_sheet`, `verify_drive_contents`,
+  `log_call_outcome`) built, tested, and live-verified where a live
+  path exists. Group B (Marc): not started as of this writing. See
+  `mvp/README.md`'s Step 2 section for evidence/test counts per tool.
