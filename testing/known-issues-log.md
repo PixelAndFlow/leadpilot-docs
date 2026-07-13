@@ -109,13 +109,19 @@ evaluation failed" doesn't match any documented Twilio error code, so
 this needs either the Twilio Console UI checked directly for an
 account-restriction/verification banner, or Twilio support contacted
 with the exact error string.
-Impact: Blocks `send_lead_text` and the SMS half of
-`search_communications` (both Marc's, Group B per Decision 032) from
-being built against real Twilio calls until resolved. Does not block
-Marc's other four Group B tools (`get_contact_history`,
-`initiate_lead_call`, `dispatch_slack_handoff`, `send_lead_email`) or
-any of Abdoul's Group A tools — recommend building those first while
-this is being sorted out with Twilio.
+Impact: **Updated 2026-07-13 — all 11 Step 2 tools are now built,
+including `send_lead_text` and `search_communications`.** This issue
+no longer blocks *writing* code, only *live-verifying* it: both
+tools' Twilio-facing execute paths use an injectable client
+(`twilio_client=` parameter) so their staging/gating/send logic is
+unit-tested against a fake client, not the real API. `messages.create()`
+(send_lead_text) and `messages.list()` (search_communications) are
+different Twilio endpoints from the two that are actually failing
+(`IncomingPhoneNumbers`, `OutgoingCallerIds`) — they may well work
+fine even with this issue unresolved, but that's genuinely unverified
+either way until someone runs them against a real Twilio account.
+Treat both tools as code-complete and tested-against-fakes, not
+confirmed-working, until this issue resolves or someone runs them live.
 
 ## Notes
 
