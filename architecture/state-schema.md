@@ -177,7 +177,7 @@ not a full schema design:
 | Field | Type | Notes |
 |---|---|---|
 | `rep_id` | string | FK to the rep table (`leadpilot/models/rep.py`) |
-| `refresh_token` | string, encrypted at rest | The rep's Google OAuth refresh token (`drive.file` scope) — used for both on-demand `fetch_ad_hoc_sheet` calls and that rep's hourly batch run |
+| `refresh_token` | string, encrypted at rest | The rep's Google OAuth refresh token (`drive.file` + `drive.readonly` scopes as of Decision 033) — used for on-demand `fetch_ad_hoc_sheet` calls, that rep's hourly batch run, and `verify_drive_contents` reads |
 | `granted_file_ids` | list of strings | Sheet/Drive file IDs the rep has selected via the Google Picker — this is what `list_sources()` (3e) enumerates for that rep |
 | `connected_at` | datetime | When the rep completed the OAuth consent |
 | `revoked_at` | datetime, nullable | Set if the rep disconnects their Google account or revokes access |

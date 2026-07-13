@@ -36,10 +36,27 @@ before deploying against a real sales org's data.
   the Google Picker, not the broader `spreadsheets`/`drive` scopes or
   a service account — chosen partly *because* it avoids Google's
   sensitive/restricted-scope app-verification review that the broader
-  scopes can trigger for external-facing OAuth consent screens. Still
-  worth confirming with Google's current OAuth verification
-  requirements before rep onboarding launches, since requirements
-  change; avoid broad Workspace admin scopes regardless.
+  scopes can trigger for external-facing OAuth consent screens. **As
+  of Decision 033, `drive.readonly` was added** (kept `drive.file` too,
+  for the write path) because `drive.file`'s per-item grant doesn't
+  extend to a folder's contents, which `verify_drive_contents` needs.
+  **This has a real compliance consequence, not just a technical one:
+  `drive.readonly` is one of Google's restricted scopes**, per Google's
+  own OAuth verification docs — an app requesting it and able to
+  access that data via a server (which LeadPilot's Cron
+  Job/unattended-service architecture does) must go through a CASA
+  (cloud application security assessment) third-party security review
+  before Google will verify the app for production use, which Google's
+  own docs describe as "potentially several weeks." **Exception that
+  may apply here**: apps in development/testing/staging don't need
+  verification yet, and apps restricted to users within one Google
+  Workspace organization (OAuth consent screen configured as
+  "Internal," not "External," in Google Cloud Console) are also
+  exempt. Whether LeadPilot qualifies depends on how Marc configured
+  the OAuth consent screen's user type back in Step 0 — not confirmed
+  as of this writing, needs a direct check before this goes anywhere
+  near real reps/real leads beyond the current dev testing. Flagged in
+  `decisions/README.md` Decision 033's "flagged to revisit" note.
 - **Per-rep OAuth consent & stored refresh tokens (new, Decision 026)** —
   each rep grants LeadPilot access to their own Google account. Needs
   its own privacy-notice/consent-language review (what reps are told

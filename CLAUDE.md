@@ -66,8 +66,14 @@ material from here into public-facing content.
 
 ## Current state (check these first for "what's the latest")
 
-- PRD: `prd/LeadPilot_PRD_v1.05.md` (current) — per-rep OAuth access
-  model, per-rep batch run, `fetch_ad_hoc_sheet`.
-- Decisions log: through Decision 028.
+- PRD: `prd/LeadPilot_PRD_v1.06.md` (current) — per-rep OAuth access
+  model, per-rep batch run, `fetch_ad_hoc_sheet`, and
+  `verify_drive_contents` corrected to `drive.readonly` (Decision 033).
+- Decisions log: through Decision 033.
 - Build order: Step 0 (accounts/access) complete; Step 1 (foundation)
-  merged to `main` in the code repo; Step 2 (the tools) not started.
+  merged to `main` in the code repo; Step 2 (the tools) in progress —
+  Group A (Abdoul): `fetch_all_leads`, `fetch_ad_hoc_sheet`,
+  `update_lead_sheet`, `verify_drive_contents` done and live-tested;
+  `log_call_outcome` remaining. Group B (Marc): not started as of this
+  writing. See `mvp/README.md`'s Step 2 section for evidence/test
+  counts per tool.

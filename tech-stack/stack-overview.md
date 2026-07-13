@@ -85,22 +85,24 @@ it whenever a component is added, swapped, or upgraded.
 - **Google (Sheets, Drive, Gmail)** — `google-api-python-client` +
   `google-auth-oauthlib`, one consistent per-rep OAuth model across
   all three (Decision 026, reversed 2026-07-11 — **supersedes the
-  service-account plan from Decision 024**). Sheets and Drive use the
-  `drive.file` scope plus the Google Picker API: each rep does a
-  one-time "Connect Google Account" consent, then selects which
-  specific sheets/folders LeadPilot may touch via Google's own file
-  picker — nothing is pre-shared to a standing identity. LeadPilot
-  stores that rep's refresh token and uses it both for `fetch_all_leads`/
-  `verify_drive_contents`/`update_lead_sheet` (now run per rep, see
-  Scheduler below) and for the new on-demand `fetch_ad_hoc_sheet` tool.
-  `drive.file` was chosen over the broader `spreadsheets`/`drive`
-  scopes specifically to avoid Google's sensitive-scope app-verification
-  review and to keep access literally scoped to what the rep chose,
-  not everything they can see. Gmail uses the same OAuth client for its
-  own consent (`send_lead_email` sends *as* a specific rep's own Gmail
-  account), which was always a per-rep case even under the old plan —
-  see Decision 026 for the full reasoning on why Sheets/Drive moved to
-  match it.
+  service-account plan from Decision 024**). Sheets and Drive both use
+  the Google Picker API for consent — each rep does a one-time "Connect
+  Google Account" consent, then selects which specific sheets/folders
+  LeadPilot may touch via Google's own file picker, nothing pre-shared
+  to a standing identity — but they don't share one scope anymore.
+  `GoogleSheetsConnector` (`fetch_all_leads`/`update_lead_sheet`/
+  `fetch_ad_hoc_sheet`) still uses `drive.file`. `verify_drive_contents`
+  needed `drive.readonly` added on top as of **Decision 033**:
+  `drive.file`'s per-item grant turned out not to extend to a granted
+  folder's *contents*, confirmed live, so it couldn't do its actual job
+  under `drive.file` alone. `drive.readonly` is a real, meaningfully
+  bigger scope than `drive.file` — see `compliance/README.md` for the
+  Google restricted-scope verification consequence this triggers, and
+  Decision 033's "flagged to revisit" note. Gmail uses the same OAuth
+  client for its own consent (`send_lead_email` sends *as* a specific
+  rep's own Gmail account), which was always a per-rep case even under
+  the old plan — see Decision 026 for the full reasoning on why
+  Sheets/Drive moved to match it.
 - **Twilio** (Python SDK) — `send_lead_text`. No viable free/Google
   Voice-based alternative exists (`testing/known-issues-log.md` Issue
   001) — this is a real, billed vendor relationship, not a placeholder.
@@ -109,10 +111,10 @@ it whenever a component is added, swapped, or upgraded.
   handle inbound Slack interactions (buttons, slash commands) in Phase 1.
 - **Google Picker API** (new, Decision 026) — client-side JS widget
   embedded in the dashboard (Step 3) so a rep can select which specific
-  sheets/folders LeadPilot may access after granting `drive.file`
-  consent. Needs its own API key (separate from the OAuth client
-  secret, lower sensitivity, but still tracked in
-  security/secrets-rotation-runbook.md).
+  sheets/folders LeadPilot may access after granting OAuth consent
+  (`drive.file` + `drive.readonly` as of Decision 033). Needs its own
+  API key (separate from the OAuth client secret, lower sensitivity,
+  but still tracked in security/secrets-rotation-runbook.md).
 
 ## Hosting
 
