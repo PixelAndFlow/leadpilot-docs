@@ -99,14 +99,23 @@ considered.
   (documented there as "free text," not exclusively for call
   outcomes) rather than unilaterally changing shared schema. Marc
   wants to add the real column but couldn't confirm with Abdoul before
-  starting — **needs Abdoul's input on two things before this
-  migration is written:** (1) whether `note` overloading is
-  acceptable short-term or the column should be added now, and (2)
-  migration ordering — Abdoul owns the `agent_run_locks` per-rep
-  mutex redesign (see the entry above), which also needs a migration
-  off the same current head (`d2caf87d6b35_add_rep_google_credentials_table`);
-  if both are written independently without checking in, Alembic ends
-  up with two divergent heads needing a manual `alembic merge`
+  starting — **needs Abdoul's input on:** whether `note` overloading is
+  acceptable short-term or the column should be added now — this part
+  is still genuinely open, not resolved here.
+
+  **Migration-head correction (2026-07-12, checked directly against
+  the actual `alembic/versions/` files):** the `agent_run_locks`
+  per-rep mutex redesign this note flagged as an open risk is already
+  done and merged (`abdouls-branch`, Decision 027) —
+  `cd645f125bf4_rework_agent_run_locks_to_per_rep_mutex.py`, with
+  `down_revision = d2caf87d6b35`. That means the real current head is
+  `cd645f125bf4`, not `d2caf87d6b35` as this note originally said —
+  any new migration (including the `message_type` one above) needs to
+  chain off `cd645f125bf4`, not the older revision, or Alembic will
+  see two divergent heads off `d2caf87d6b35` and need a manual
+  `alembic merge` to reconcile. Worth pulling `abdouls-branch` (or its
+  merged PR) before writing that migration so the real head is visible
+  locally.
 - Narrower alternative to `drive.readonly` for `verify_drive_contents`
   (Decision 033) — revisit if Google ever ships a scope that lets a
   Picker-granted folder cascade access to its own contents without

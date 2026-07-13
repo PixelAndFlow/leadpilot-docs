@@ -114,7 +114,7 @@ provider APIs.
 
 **Exact row-matching contract (written down 2026-07-12, since
 `initiate_lead_call` and `log_call_outcome` are being built by
-different people — Decision 030):** `log_call_outcome` takes an
+different people — Decision 032):** `log_call_outcome` takes an
 `event_id` directly, the same `contact_history.event_id` the rep is
 looking at in their queue — it does **not** look a row up by
 `lead_id` and guess which one. This sidesteps the ambiguity a
