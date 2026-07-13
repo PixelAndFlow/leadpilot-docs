@@ -89,6 +89,23 @@ considered.
 - Whether Gmail (Step 2, `send_lead_email`) shares the same OAuth
   client/consent screen as the `drive.file` grant (Decision 026) or
   needs its own separate client — not evaluated yet
+- Add a dedicated `message_type` column to `contact_history` for
+  `dispatch_slack_handoff` (`completion_handoff`/`info_request`/
+  `urgent_callback_request`) — `architecture/state-schema.md` has no
+  column for this, even though the PRD tracks it as a tracked output
+  of the tool. Marc's `leadpilot/tools/dispatch_slack_handoff.py`
+  currently stores it in the existing `note` field as a stopgap
+  (documented there as "free text," not exclusively for call
+  outcomes) rather than unilaterally changing shared schema. Marc
+  wants to add the real column but couldn't confirm with Abdoul before
+  starting — **needs Abdoul's input on two things before this
+  migration is written:** (1) whether `note` overloading is
+  acceptable short-term or the column should be added now, and (2)
+  migration ordering — Abdoul owns the `agent_run_locks` per-rep
+  mutex redesign (see the entry above), which also needs a migration
+  off the same current head (`d2caf87d6b35_add_rep_google_credentials_table`);
+  if both are written independently without checking in, Alembic ends
+  up with two divergent heads needing a manual `alembic merge`
 
 ## Notes
 
