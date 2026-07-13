@@ -125,32 +125,40 @@ confirmed-working, until this issue resolves or someone runs them live.
 
 **Update 2026-07-13 — Twilio support provided a diagnostic script.**
 As part of investigating the `Policy evaluation failed` error above,
-Twilio support gave Marc a standalone test script
-(`leadpilot/scripts/supporttest.py`, plus an unmodified template copy
-`leadpilot/scripts/support.orig`) to place a single outbound test
-call directly against `client.calls.create()`, independent of
-LeadPilot's own code. This is diagnostic tooling for this issue, not
-part of the product — it's not one of the 11 Step 2 tools and isn't
-wired into anything the agent calls.
+Twilio support gave Marc a standalone test script to place a single
+outbound test call directly against `client.calls.create()`,
+independent of LeadPilot's own code. This is diagnostic tooling for
+this issue, not part of the product — it's not one of the 11 Step 2
+tools and isn't wired into anything the agent calls.
 
-`supporttest.py` has Marc's real `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN`
-hardcoded in plain text (support's own template expects them typed in
-directly, not read from `.env.local`) — it is listed by name in
-`leadpilot/.gitignore` (`supporttest.py`, with an inline comment
-explaining why) specifically so it can never be committed. Confirmed
-via `git status`/`git check-ignore` that it's untracked and actively
-ignored, not merely absent from a stray `git add`. `support.orig`
-(the template Twilio sent, with placeholder credentials only) has no
-secrets and isn't ignored, but it's also not meant to be committed —
-it's scratch work for this diagnosis, not a script the product needs.
+Two files came out of this: `leadpilot/scripts/supporttest.py` (the
+working copy Marc filled in with his real `TWILIO_ACCOUNT_SID`/
+`TWILIO_AUTH_TOKEN` in plain text — support's template expects them
+typed in directly, not read from `.env.local`) and
+`leadpilot/scripts/twilio_call_diagnostic_template.py` (renamed from
+support's original `support.orig`, placeholder credentials only).
 
-**Open follow-up, not yet done:** per Marc's plan, both files should
-be deleted and the Twilio Account SID/Auth Token regenerated once this
-diagnostic testing is complete — the credentials in `supporttest.py`
-should be treated as exposed (typed into a plain-text file, even
-though never pushed) and rotated on that basis, not reused going
-forward. Move this to Resolved once the rotation happens and the root
-cause of `Policy evaluation failed` is confirmed.
+- `supporttest.py` is listed by name in `leadpilot/.gitignore`
+  (`supporttest.py`, with an inline comment explaining why) so it can
+  never be committed with real credentials in it — confirmed via
+  `git status`/`git check-ignore` that it's untracked and actively
+  ignored, not merely absent from a stray `git add`. **Per Marc's
+  plan, this file gets deleted and the Twilio Account SID/Auth Token
+  regenerated once this diagnostic testing is complete** — the
+  credentials typed into it should be treated as exposed (even though
+  never pushed) and rotated on that basis, not reused going forward.
+- `twilio_call_diagnostic_template.py` is **kept intentionally**, not
+  deleted — it's a reusable troubleshooting tool for the next time
+  something in the Twilio integration misbehaves (isolates "LeadPilot
+  bug" from "Twilio account issue" the same way it did for this
+  issue). Committed to the repo since it only ever holds placeholder
+  credentials; has a header comment marking it as diagnostic-only, not
+  needed for the build, and meant to be copied/filled-in/discarded
+  per-use rather than edited in place.
+
+Move this issue to Resolved once `supporttest.py` is deleted, the
+Twilio credentials are rotated, and the root cause of `Policy
+evaluation failed` is confirmed.
 
 ## Notes
 
