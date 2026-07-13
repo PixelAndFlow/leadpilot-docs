@@ -411,40 +411,80 @@ Twilio credential check changed the `send_lead_text` reasoning).
 live-verified where a live path exists.** 121 passed, 0 skipped.
 
 **Group B — Marc (read-only + outreach/communication APIs, 6 tools):**
-- [ ] `get_contact_history` — reads the existing `contact_history`
-      log; no external API, no dependency on any other tool
-- [ ] `initiate_lead_call` — clipboard handoff (Decision 016), no
+- [x] `get_contact_history` — reads the existing `contact_history`
+      log; no external API, no dependency on any other tool.
+      `leadpilot/tools/get_contact_history.py`, tested in
+      `tests/test_get_contact_history.py` (7 tests, passing against
+      real local Postgres as of 2026-07-13)
+- [x] `initiate_lead_call` — clipboard handoff (Decision 016), no
       external API. `log_call_outcome` (Abdoul's) depends on the
       `contact_history` row this creates — see the written contract
-      referenced above; matching it doesn't require coordinating with
-      Abdoul beyond reading that section
-- [ ] `send_lead_email` — Gmail. **Needs a Gmail OAuth scope added to
-      `leadpilot/google_oauth.py`'s `SCOPES` list**, which currently
-      only requests `drive.file` — this is the one shared-infra file
-      either of these two tools would need to touch, so keeping both
-      with the same person means it's edited once, not twice.
-      Also: reps who connect before this scope is added will need to
-      reconnect to grant Gmail access — decide the final scope list
-      before doing much live testing, not incrementally
-- [ ] `dispatch_slack_handoff` — Slack, all three message types
-- [ ] `search_communications` — Twilio (SMS) + Gmail (email search) —
-      same Gmail-scope dependency as `send_lead_email` above
-- [ ] `send_lead_text` — Twilio. Originally considered for Abdoul's
-      side on the assumption his phone was the Twilio trial account's
-      verified caller ID — that assumption was never actually
-      confirmed, and a real API check against the credentials in
-      `.env.local` turned up a 401 authentication failure (still
-      unresolved with Marc as of this split — possibly a rotated Auth
-      Token). Fixing the Twilio credentials/verified-number question
-      is a prerequisite for live-testing this tool, independent of who
-      builds it
-- [ ] ~~Design the `agent_run_locks` per-rep mutex~~ — **moved to
-      Group A 2026-07-12.** Originally grouped here as "not tied to a
-      specific tool," but it specifically gates `fetch_all_leads`'s
-      per-rep batch loop (see `architecture/state-schema.md`'s own
-      note from when this was first flagged) — that's Abdoul's tool
-      as of Decision 032, so this belongs with him too. Caught by
-      Marc's own Claude session reviewing the corrected split.
+      referenced above; matched it without needing to coordinate with
+      Abdoul beyond reading that section. `leadpilot/tools/initiate_lead_call.py`,
+      tested in `tests/test_initiate_lead_call.py` (10 tests, passing
+      as of 2026-07-13)
+- [x] `send_lead_email` — Gmail. Added `gmail.send` (and
+      `gmail.readonly`, for `search_communications` below — both added
+      in the same edit rather than incrementally, since reps have to
+      reconnect every time this scope list grows) to
+      `leadpilot/google_oauth.py`'s `SCOPES`, which previously only
+      requested `drive.file`. Executes using the *approving* rep's own
+      Gmail access token, not a shared sender. `leadpilot/tools/send_lead_email.py`,
+      tested in `tests/test_send_lead_email.py` (11 tests, passing as
+      of 2026-07-13) — one of those tests caught a real ordering bug
+      (an unconnected rep's approval could leave a row falsely marked
+      `EXECUTED` for an email never sent); fixed by checking the rep's
+      Google connection and building the Gmail service *before*
+      calling `gate.try_execute()`, not after
+- [x] `dispatch_slack_handoff` — Slack, all three message types.
+      `leadpilot/tools/dispatch_slack_handoff.py`, tested in
+      `tests/test_dispatch_slack_handoff.py` (10 tests, passing as of
+      2026-07-13). **Open schema gap, not yet resolved:** the message
+      type is currently stored in `contact_history.note` rather than a
+      dedicated column — flagged in decisions/README.md's "Open
+      decisions" pending Abdoul's input, both on the schema question
+      and on migration-ordering against his `agent_run_locks`
+      migration (same current head)
+- [x] `search_communications` — Twilio (SMS) + Gmail (email search),
+      same Gmail-scope dependency as `send_lead_email` above.
+      `leadpilot/tools/search_communications.py`, tested in
+      `tests/test_search_communications.py` (9 tests, passing as of
+      2026-07-13). **Documented, load-bearing limitation:** Twilio's
+      basic API has no free-text SMS body search, so a name/company
+      identifier only searches email — only a phone-number-shaped
+      identifier searches SMS too
+- [x] `send_lead_text` — Twilio. The 401 blocking live verification
+      (originally suspected as a rotated Auth Token when this split
+      was written) turned out, once actually investigated, to be a
+      narrower `Policy evaluation failed` error scoped to just the
+      `IncomingPhoneNumbers`/`OutgoingCallerIds` endpoints — not the
+      base Account resource, and not the `messages.create()` endpoint
+      this tool actually calls (see testing/known-issues-log.md Issue
+      005). Built and unit-tested against an injectable fake Twilio
+      client without needing that issue resolved.
+      `leadpilot/tools/send_lead_text.py`, tested in
+      `tests/test_send_lead_text.py` (10 tests, passing as of
+      2026-07-13). **Code-complete and tested-against-fakes, not yet
+      live-verified** — Issue 005 remains open, blocking only the live
+      check, not the build
+- [x] ~~Design the `agent_run_locks` per-rep mutex~~ — moved to Group A
+      2026-07-12, see Step 1/Step 2 foundation above; built by Abdoul.
+
+**Group B complete as of 2026-07-13 — all 6 tools built and tested
+(57 tests: 7+10+10+11+10+9). `send_lead_text` and
+`search_communications`'s Twilio-facing paths are unit-tested against
+a fake client only, not yet live-verified (Issue 005). All other Group
+B tools' non-Twilio logic is tested against real local Postgres; none
+of Group B has a live end-to-end pass yet the way Group A's
+`fetch_all_leads`/`update_lead_sheet`/`fetch_ad_hoc_sheet` do, since
+that requires the live "Connect Google Account" OAuth flow, which
+Marc has planned but not yet run (see leadpilot-docs
+`ai-conversations/claude/2026-07-13-step-2-all-11-tools-built-and-env-setup.md`).**
+
+**All 11 Step 2 tools now built and tested as of 2026-07-13** (Group A
++ Group B). Not yet done: the prompt-injection validation layer below,
+live Google OAuth verification for Group B's tools, and Twilio live
+verification (Issue 005).
 
 **Neither group — do this before/alongside either, whoever gets to it
 first:**
