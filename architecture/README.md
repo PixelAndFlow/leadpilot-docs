@@ -47,8 +47,12 @@ LeadPilot agent runtime (running as a specific rep)
       |                                (state store — see architecture/
       |                                 state-schema.md; no external API)
       |-- verify_drive_contents ----> Google Drive API, authenticated as the
-      |                                requesting rep, same drive.file/Picker
-      |                                consent as fetch_all_leads (Decision 026)
+      |                                requesting rep via the SAME Picker consent
+      |                                as fetch_all_leads, but reads through
+      |                                drive.readonly, not drive.file (Decision
+      |                                033, updates Decision 026) — a granted
+      |                                folder's own children aren't visible
+      |                                under drive.file alone
       |-- fetch_ad_hoc_sheet -------> LeadSourceConnector --> Google Sheets API,
       |                                one-off read of a sheet the rep hands
       |                                LeadPilot mid-session, same per-rep OAuth
@@ -141,8 +145,11 @@ Google Picker)
 - **The connector is rep-scoped, not shared (Decision 026, PRD v1.05
   section 3e).** `GoogleSheetsConnector` (and Drive access behind
   `verify_drive_contents`) authenticates as the individual requesting
-  rep via OAuth (`drive.file` scope, sheets selected through the
-  Google Picker) — there is no single service-account-authenticated
+  rep via OAuth — sheets/folders are still selected through the Google
+  Picker either way, but `GoogleSheetsConnector` reads/writes via
+  `drive.file` while `verify_drive_contents` reads via `drive.readonly`
+  (Decision 033, since `drive.file` doesn't extend to a folder's
+  contents) — there is no single service-account-authenticated
   instance shared across reps anymore. `list_sources()` returns only
   what that specific rep has connected. This is a real rework of the
   `GoogleSheetsConnector` shipped in Step 1 (which authenticated via a

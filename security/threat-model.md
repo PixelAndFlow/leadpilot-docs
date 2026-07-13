@@ -170,6 +170,21 @@ risk above. Net assessment: narrower blast radius per incident, a new
 (and testable) failure mode to guard against — see Decision 026 for
 the full reasoning.
 
+**Update (Decision 033):** that "one rep's own Google-granted access"
+boundary got meaningfully wider for Drive specifically. `drive.file`'s
+per-item grant turned out not to extend to a folder's contents
+(confirmed live), so `verify_drive_contents` now reads via
+`drive.readonly` instead — a compromised rep session (or a bug in
+`verify_drive_contents`) can now read that rep's *entire* Drive, not
+just the specific sheets/folders they explicitly granted through the
+Picker. The product-level restriction (which folders LeadPilot
+actually *acts on*) is unchanged — still only what's Picker-granted —
+but the underlying credential's real reach is bigger than that. Sheets
+access (`drive.file`) is unaffected. Flagged in Decision 033 for
+revisiting if Google ships a narrower alternative; also see
+`compliance/README.md` for the Google restricted-scope verification
+consequence this triggers.
+
 ## Threats not yet covered by the PRD (flag for discussion with Abdoul)
 
 - **Credential compromise** — what happens if the Google/Slack API

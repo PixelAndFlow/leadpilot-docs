@@ -55,8 +55,11 @@ the smallest complete version worth running against real leads.
 - [ ] `send_lead_email` — drafts an email to the lead; stages only,
       sends after rep approval
 - [ ] `verify_drive_contents` — Google Drive API, authenticated as the
-      requesting rep (same `drive.file`/Picker consent as
-      `fetch_all_leads`, Decision 026), file presence/type/size
+      requesting rep. Reads via `drive.readonly`, not `drive.file`
+      (Decision 033, updates Decision 026) — a Picker-granted folder's
+      *contents* aren't visible under `drive.file` alone, confirmed
+      live. Still only inspects folders the rep explicitly granted via
+      the Picker at the product level. File presence/type/size
 - [ ] `dispatch_slack_handoff` — Slack Web API, drafts a completion
       handoff, info request, or urgent callback request to exactly 3
       stakeholder accounts; stages only, fires after rep approval —
@@ -252,9 +255,17 @@ per this file's own "check off only when built AND verified" rule.
 **Foundation done 2026-07-12 by Abdoul, on `abdouls-branch`** — see
 [PR #4](https://github.com/abdoulk30/LeadPilot/pull/4) in the code
 repo (open, pending Marc's review). This is groundwork the 11 tools
-below build on, not any of the tools themselves — real, tested code
-(60 passing, 4 skipped pending live OAuth verification — see the PR
-description), not designed on paper:
+below build on, not any of the tools themselves — real, tested code,
+not designed on paper. **106 passed, 0 skipped** as of 2026-07-12 (83
+at foundation completion; `fetch_all_leads`, `fetch_ad_hoc_sheet`,
+`update_lead_sheet`, and `verify_drive_contents` have been built
+since), including the full real OAuth flow verified live end to end by
+a human (connect → consent → Picker → grant-file → real Sheets API
+read/write) — not just designed or tested in isolation.
+`verify_drive_contents`' live test needed a rep to actually grant a
+real Drive folder via `/dev/picker-test`'s folder-picker button before
+it could run for real — done, and it surfaced a real scope problem
+fixed the same day, see **Decision 033**.
 
 - [x] Build the `rep_google_credentials` table (shape sketched in
       `architecture/state-schema.md`) including the encryption-at-rest
@@ -266,15 +277,29 @@ description), not designed on paper:
       which used to assume one global `source_id`
 - [x] Google OAuth connect/callback/access-token/grant-file endpoints
       — the actual "Connect Google Account" backend Step 3 needs.
-      **Live end-to-end verification still pending** — blocked on
-      Abdoul's Google account not being on the OAuth test-user
-      allowlist (a Google Cloud Console config issue, confirmed
-      unrelated to the code itself)
+      **Live end-to-end verification complete 2026-07-12.** Two real
+      bugs caught and fixed getting here, both worth knowing before
+      touching this code: (1) `google-auth-oauthlib`'s `Flow` generates
+      a PKCE `code_verifier` per instance, and `/connect`/`/callback`
+      are separate requests each building a fresh `Flow` — the
+      verifier was being discarded the moment `/connect` returned,
+      fixed by carrying it in a signed cookie the same way `state`
+      already was; (2) the Picker widget was missing
+      `.setAppId(<project number>)` — without it, Picker still shows
+      real files and fires a real "picked" callback with a valid file
+      ID (looks fully successful), but Google never actually registers
+      the `drive.file` grant server-side, so the access token still
+      can't read the file afterward (404, proven not to be a code bug
+      by bypassing the connector with a raw `curl` call using the same
+      token and getting the identical error straight from Google)
 - [x] Tool-registration scaffold (`leadpilot/tools/base.py`,
       `registry.py`) — auto-discovery via `pkgutil`, so adding a tool
       file never requires editing a shared list. Built specifically so
       the split below doesn't create merge conflicts between Marc and
       Abdoul working in parallel
+- [x] `/dev/picker-test` — a minimal, dev-only harness (gated behind
+      `ENVIRONMENT`) so Step 2 tools can be tested against real
+      Picker-granted files ahead of Step 3's actual UI existing
 
 **Remaining — split 2026-07-12, Abdoul building 5, Marc building 6**
 (see decisions/README.md **Decision 032**, which supersedes Decision
@@ -283,33 +308,107 @@ Claude session without visibility into this session's context, and a
 Twilio credential check changed the `send_lead_text` reasoning).
 
 **Group A — Abdoul (Sheets/Drive + `log_call_outcome`, 5 tools):**
-- [ ] `fetch_all_leads` — through the now-rep-scoped `GoogleSheetsConnector`
-- [ ] `update_lead_sheet` — ditto; connector's `stage_field_write`/
-      `commit_field_write` already built and tested, tool-level
-      wrapper (calling `gate.try_execute` first) not yet written
-- [ ] `verify_drive_contents` — same per-rep OAuth model as Sheets
-      (Decision 026), but Drive API, not Sheets API — no
-      service-account version to retrofit, built rep-scoped from the
-      start
-- [ ] `fetch_ad_hoc_sheet` (Decision 028) — finalize name/signature,
-      shares most of its code with `fetch_all_leads` (same connector,
-      different entry point) — keeping both with the same person
-      avoids duplicated/inconsistent Sheets-reading logic
-- [ ] Design the `agent_run_locks` per-rep mutex (Decision 027,
+- [x] `fetch_all_leads` — through the now-rep-scoped `GoogleSheetsConnector`.
+      Real dedup logic (matches existing leads by phone, then email —
+      Eval Case 2), wrapped in the per-rep `agent_run_locks` mutex.
+      `leadpilot/tools/fetch_all_leads.py`, tested in
+      `tests/test_fetch_all_leads.py` (11 tests against a fake
+      connector for dedup/lock logic, plus one live test against the
+      real connected rep — all passing as of 2026-07-12)
+- [x] `update_lead_sheet` — split into `run()` (the `@tool` the agent
+      calls: computes the diff via `connector.stage_field_write()`,
+      drops a `contact_history` row at `awaiting_rep_approval`) and a
+      separate `execute()` (called after the rep's approval — Step
+      3/interface territory, doesn't exist yet — re-checks
+      `gate.try_execute()` itself, then performs the real write via
+      `connector.commit_field_write()`, authenticated as the
+      *approving* rep so Google's own revision history attributes it
+      correctly). `leadpilot/tools/update_lead_sheet.py`, tested in
+      `tests/test_update_lead_sheet.py` (9 tests: staging, gated
+      execution, single-use-under-real-concurrency using 10 real
+      parallel DB connections — same rigor as `gate.py`'s own
+      concurrency test — plus a live test that performed a real
+      round-trip write against the actual connected sheet — all
+      passing as of 2026-07-12). Also fixed a real pre-existing bug
+      found while adding this tool's test: `test_tools_registry.py`'s
+      cleanup fixture cleared the tool registry without restoring it,
+      which would've silently broken every tool-registration test
+      after it in file-execution order (including future tools, not
+      just this one) — see `leadpilot/tools/base.py`
+- [x] `verify_drive_contents` — same per-rep OAuth model as Sheets, but
+      Drive API, not Sheets API — no service-account version to
+      retrofit, built rep-scoped from the start. Not built against the
+      `LeadSourceConnector` interface (that's for lead-row sources);
+      gets its own minimal `DriveContentsClient` interface
+      (`GoogleDriveClient`) since "list a folder's contents" is a
+      different shape of operation than fetch/dedup/write-a-row.
+      `leadpilot/connectors/google_drive.py` +
+      `leadpilot/tools/verify_drive_contents.py`, tested in
+      `tests/test_verify_drive_contents.py`. Extended `/dev/picker-test`
+      with a second button (`DocsView(FOLDERS).setSelectFolderEnabled
+      (true)`) so a rep can actually grant a Drive folder through the
+      real Picker, not just a sheet.
+
+      **Real bug caught live, 2026-07-12 (Decision 033):** the live
+      test came back empty against a real granted folder with a real
+      file dropped in it — not a code bug, a genuine scope limitation.
+      `drive.file`'s per-item Picker grant doesn't extend to a folder's
+      *contents*: the access token couldn't see the file at all, in an
+      unfiltered "list everything visible" call, confirmed directly
+      against the real Drive API and matching Google's own scope docs
+      plus other developers hitting the same wall. Marc, whose Group B
+      work involves data on a Shared Drive, asked whether being a
+      Shared Drive changes this — checked directly, it doesn't; the
+      same per-item restriction applies to Shared Drive folders too.
+      Fixed by adding `drive.readonly` to the OAuth scope alongside the
+      existing `drive.file` (kept for `update_lead_sheet`'s writes).
+      **Every already-connected rep needs to reconnect** — an
+      already-issued refresh token doesn't cover a scope added after
+      it was granted, confirmed live (`invalid_scope` on refresh until
+      reconnected). Widening the scope also surfaced a second real bug:
+      `fetch_all_leads`'s `list_sources()` was handing newly-grantable
+      folder IDs to the Sheets API and getting a real 400 — fixed by
+      filtering `list_sources()` to actual spreadsheets via a Drive
+      mimeType check. Full writeup, tradeoffs, and the note to revisit
+      this scope choice later: **Decision 033**.
+- [x] `fetch_ad_hoc_sheet` (Decision 028) — no run-lock (one-off
+      lookup, not the batch cycle); doesn't trigger the Google Picker
+      itself, just lets `GoogleSheetsConnector`'s own "not granted"
+      validation surface naturally for whatever calls it to handle.
+      Shared dedup/upsert logic with `fetch_all_leads` extracted into
+      `leadpilot/lead_ingest.py` rather than duplicated.
+      `leadpilot/tools/fetch_ad_hoc_sheet.py`, tested in
+      `tests/test_fetch_ad_hoc_sheet.py` (7 tests, including a live
+      one against the real connected rep — passing 2026-07-12)
+- [x] Design the `agent_run_locks` per-rep mutex (Decision 027,
       updates Decision 025's singleton design) — moved here 2026-07-12
       (was Marc's, see the strikethrough note below); the mutex exists
       specifically to stop the *same rep's* `fetch_all_leads` batch
       run from overlapping with itself, per `architecture/
       state-schema.md`'s own note when this was first flagged — that
-      makes it Abdoul's, not a general outreach concern
-- [ ] `log_call_outcome` — writes to the existing `contact_history`
-      log; no external API. **Depends on `initiate_lead_call`
-      (Marc's)** — takes an `event_id` directly and validates
-      `tool=INITIATE_LEAD_CALL`, `stage=EXECUTED`, `outcome=PENDING`
-      before writing (exact contract:
-      `architecture/state-schema.md`, "Outcome visibility" section) —
-      build against that written contract, not
-      `initiate_lead_call`'s actual implementation
+      makes it Abdoul's, not a general outreach concern.
+      `leadpilot/models/run_lock.py`/`locks.py`, tested in
+      `tests/test_locks.py` including a test proving two different
+      reps' runs never block each other (the actual point of the
+      rework) and a real concurrency test
+- [x] `log_call_outcome` — writes to the existing `contact_history`
+      log; no external API, no approval gate (rep-reported fact about
+      a call they placed themselves). Takes an `event_id` directly and
+      validates `tool=INITIATE_LEAD_CALL`, `stage=EXECUTED`,
+      `outcome=PENDING` before writing (exact contract:
+      `architecture/state-schema.md`, "Outcome visibility" section).
+      Built and fully tested against that written contract before
+      `initiate_lead_call`'s (Marc's) actual implementation exists —
+      tests construct the `contact_history` row directly per the
+      contract, proving the two tools really are independently
+      buildable as designed. `leadpilot/tools/log_call_outcome.py`,
+      tested in `tests/test_log_call_outcome.py` (15 tests: every
+      rep-reportable outcome, rejects provider-only outcomes
+      (`delivered`/`failed`) and `pending`, rejects wrong tool/stage/
+      already-logged states — all passing as of 2026-07-12)
+
+**Group A complete as of 2026-07-12 — all 5 tools built, tested, and
+live-verified where a live path exists.** 121 passed, 0 skipped.
 
 **Group B — Marc (read-only + outreach/communication APIs, 6 tools):**
 - [ ] `get_contact_history` — reads the existing `contact_history`

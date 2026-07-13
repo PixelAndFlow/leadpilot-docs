@@ -17,18 +17,27 @@ evaluation criteria before any code is written.
 
 ## Current file
 
-  LeadPilot_PRD_v1.05.md — Agent Build PRD, dated 2026-07-11
+  LeadPilot_PRD_v1.06.md — Agent Build PRD, dated 2026-07-12
                            Owners: Marc Delsoin, Abdoul Ba
-                           Reverses the Google Sheets/Drive access
-                           model from a shared service account to
-                           per-rep OAuth (`drive.file` + Google
-                           Picker), makes the hourly batch run per-rep,
-                           and adds `fetch_ad_hoc_sheet` for on-demand
-                           rep-directed sheet access. Still a working
-                           draft.
+                           One change from v1.05: `verify_drive_contents`
+                           now authenticates via `drive.readonly`, not
+                           `drive.file` — `drive.file`'s per-item Picker
+                           grant doesn't extend to a folder's contents,
+                           confirmed live while building Step 2 (see
+                           decisions/README.md Decision 033, and
+                           compliance/README.md for the Google
+                           restricted-scope verification consequence
+                           this triggers). Still a working draft.
 
 ## Previous versions
 
+  LeadPilot_PRD_v1.05.md — Agent Build PRD, dated 2026-07-11
+                           Superseded by v1.06. Reverses the Google
+                           Sheets/Drive access model from a shared
+                           service account to per-rep OAuth (`drive.file`
+                           + Google Picker), makes the hourly batch run
+                           per-rep, and adds `fetch_ad_hoc_sheet` for
+                           on-demand rep-directed sheet access.
   LeadPilot_PRD_v1.04.md — Agent Build PRD, dated 2026-07-08
                            Superseded by v1.05. Retires
                            `initiate_backoffice_call`, redefines

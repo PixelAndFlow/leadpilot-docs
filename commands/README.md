@@ -55,12 +55,18 @@ Per PRD v1.05's tool definitions and Decision 022's stack,
   GOOGLE_OAUTH_CLIENT_ID=      Sheets, Drive, AND Gmail — one per-rep
   GOOGLE_OAUTH_CLIENT_SECRET=  OAuth client (Decision 026, reversed
                                2026-07-11, supersedes Decision 024's
-                               service-account plan). Sheets/Drive use
-                               the drive.file scope: each rep does a
+                               service-account plan). Each rep does a
                                one-time consent and picks specific
                                sheets/folders via the Google Picker —
                                nothing is pre-shared to a standing
-                               identity. Gmail consent (send_lead_email,
+                               identity. Sheets use drive.file;
+                               verify_drive_contents needs drive.readonly
+                               too as of Decision 033 (drive.file's
+                               per-item grant doesn't extend to a
+                               folder's contents — see
+                               compliance/README.md for the Google
+                               restricted-scope review this triggers).
+                               Gmail consent (send_lead_email,
                                Step 2) uses the same client. LeadPilot
                                stores each rep's refresh token in
                                Postgres (rep_google_credentials, see
