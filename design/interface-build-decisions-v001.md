@@ -145,7 +145,9 @@ accent list too: generic buttons, queue items, tabs, and timeline
 entries now hover with `rgba(var(--ar), ~0.08–0.12)` tint instead of
 white-alpha. Exception kept deliberately: the Reject button's hover
 stays semantic red — accent-tinting a destructive control would
-misread, and semantic colors never re-theme.
+misread, and semantic colors never re-theme. (Marc briefly asked for
+Reject to hover accent too, then reversed within minutes and
+confirmed the red exception stands.)
 
 ## B. Implementation decisions
 
