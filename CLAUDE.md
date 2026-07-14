@@ -72,22 +72,26 @@ material from here into public-facing content.
 - Decisions log: through Decision 033.
 - Build order: Step 0 (accounts/access) complete; Step 1 (foundation)
   merged to `main` in the code repo; Step 2 (the tools) — **both groups
-  now complete as of 2026-07-13**. **Group A (Abdoul)**: all 5 tools
+  complete AND merged to `main` as of 2026-07-13** (commit `41a7bd9`,
+  `abdouls-branch` + `marc-step2-split` combined; one conflict, in
+  `google_oauth.py`, resolved). **Group A (Abdoul)**: all 5 tools
   (`fetch_all_leads`, `fetch_ad_hoc_sheet`, `update_lead_sheet`,
   `verify_drive_contents`, `log_call_outcome`) built, tested, and
-  live-verified where a live path exists. **Group B (Marc)**: all 6
-  tools (`get_contact_history`, `initiate_lead_call`,
-  `send_lead_email`, `dispatch_slack_handoff`, `search_communications`,
-  `send_lead_text`) built and tested (57 tests) — not yet
-  live-verified: Group B's Google-facing tools need Marc to complete
-  the live "Connect Google Account" OAuth flow (planned, not yet run),
-  and `send_lead_text`/`search_communications`'s Twilio paths are
-  blocked on Issue 005 (`testing/known-issues-log.md`), a live account
-  issue unrelated to the code. Not started: the prompt-injection
-  validation layer, and Step 3 (the interface). See `mvp/README.md`'s
-  Step 2 section for evidence/test counts per tool.
-- **Known code-repo drift, flag don't assume fixed:** the `leadpilot`
-  code repo's own `CLAUDE.md` "Current build state" section (last
-  updated when only Group A's foundation was done) still lists all of
-  Group B's tools under "Not yet started" — that's now stale as of
-  2026-07-13. Check whether it's been updated before trusting it.
+  live-verified where a live path exists; `update_lead_sheet` needed a
+  post-merge fix for Decision 034's interface change (done, tested,
+  pushed as `3dc3a52` — see `testing/known-issues-log.md` Issue 006).
+  **Group B (Marc)**: all 6 tools (`get_contact_history`,
+  `initiate_lead_call`, `send_lead_email`, `dispatch_slack_handoff`,
+  `search_communications`, `send_lead_text`) built and tested (57
+  tests) — not yet live-verified: Group B's Google-facing tools need
+  Marc to complete the live "Connect Google Account" OAuth flow
+  (planned, not yet run), and `send_lead_text`/`search_communications`'s
+  Twilio paths are blocked on Issue 005 (`testing/known-issues-log.md`),
+  a live account issue unrelated to the code. Full merged suite: 182
+  passed as of 2026-07-13 (9 live-test failures are an expected
+  OAuth-reconnect situation — the Gmail/drive.readonly scope widening
+  means every previously-connected rep, including the one used for
+  local testing, needs to redo the Connect Google Account flow — not
+  code bugs). Not started: the prompt-injection validation layer, and
+  Step 3 (the interface). See `mvp/README.md`'s Step 2 section for
+  evidence/test counts per tool.

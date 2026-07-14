@@ -163,7 +163,7 @@ evaluation failed` is confirmed.
 ## Issue 006 — Same-cell concurrent spreadsheet writes could silently clobber each other
 
 Opened: 2026-07-13
-Status: Resolved (see Decision 034 in decisions/README.md) — **with an open verification gap, see below**
+Status: Resolved and fully verified (see Decision 034 in decisions/README.md) — the earlier verification gap below is closed
 Description: Marc asked what happens if two reps (or two overlapping
 runs) try to edit the same spreadsheet cell at once. Checked the real
 code: `GoogleSheetsConnector.commit_field_write` was a plain
@@ -181,16 +181,18 @@ a new `sheet_cell_locks` table serializes concurrent commits to the
 same cell. Full mechanism, alternatives considered, and test coverage
 in Decision 034's entry.
 
-**Not yet verified:** no Postgres binary and no PyPI/network access in
-the sandbox this was built in, so the migration
-(`fed4e55c9f58_add_sheet_cell_locks_table.py`) has never actually been
-run, and the new/updated tests (`tests/test_google_sheets_connector.py`,
-`tests/test_locks.py`'s new `sheet_cell_lock` tests, and the fixed
-call sites in `tests/test_google_sheets_connector_live.py`) have never
-actually been executed — syntax-checked only. Run `alembic upgrade
-head` then `pytest tests/test_locks.py
-tests/test_google_sheets_connector.py tests/test_google_sheets_connector_live.py`
-locally for real evidence.
+**Verified 2026-07-13, real evidence (Abdoul):** after `abdouls-branch`
+and `marc-step2-split` were both merged into `main`, ran `alembic
+upgrade head` against a real local Postgres — applied cleanly onto a
+single unified head (`fed4e55c9f58`, chained correctly off
+`cd645f125bf4`, confirming the "sibling migrations" prediction below
+was right and no manual `alembic merge` was actually needed once both
+branches landed in the same merge). Full suite: **182 passed**, 9
+failed — every one of the 9 is `invalid_scope` on a live OAuth test,
+unrelated to this fix (the locally stored refresh token predates
+Decision 034's earlier Gmail-scope addition and needs a rep reconnect,
+same reconnect-required situation Decision 033 already documented, not
+a new problem).
 
 **Migration-head question — resolved 2026-07-13, not actually a
 mystery:** `cd645f125bf4` is real and confirmed — it's on
@@ -205,31 +207,34 @@ heads` will correctly show two heads needing one ordinary `alembic
 merge` to reconcile. Not a sign anything is broken, just the standard
 two-people-added-a-migration-in-parallel situation.
 
-**`update_lead_sheet` integration — now precisely known, not just
-flagged:** confirmed by reading the real file on `origin/abdouls-branch`
-(`src/leadpilot/tools/update_lead_sheet.py`). Two things it needs once
-this fix is merged in:
-1. `_encode_content_ref`/`_decode_content_ref` need a `current` field
-   added — `run()` already computes `diff.current` but never persists
-   it, so `execute()` currently has nothing to pass as
-   `expected_current`.
-2. `execute()`'s `connector.commit_field_write(...)` call needs
-   `expected_current=info.get("current")` added (`.get`, not `[]`, so
-   any row staged before this change doesn't KeyError).
+**`update_lead_sheet` integration — done, not just planned (Abdoul,
+2026-07-13, commit `3dc3a52` on `main`):** both predicted changes made,
+exactly as anticipated below, plus one improvement beyond what was
+flagged as a "UX nice-to-have":
+1. `_encode_content_ref`/`_decode_content_ref` now carry a `current`
+   field — `run()` persists `diff.current` at staging time, so
+   `execute()` has it to pass as `expected_current`.
+2. `execute()` passes `expected_current=info["current"]` — bracket
+   access, not `.get()`, deliberately: this is a pre-launch dev system
+   with no real production data, so there's no old-shape `content_ref`
+   row that could lack the key and needs no defensive fallback for one.
+3. **Beyond what was flagged as a nice-to-have:** rather than leaving
+   `StaleWriteError`/`ConcurrentWriteError` wrapped inside the generic
+   `WriteExecutionFailedAfterApprovalError` for Step 3 to unwrap later,
+   `execute()` now re-raises both distinctly, unwrapped — Step 3's
+   future approval endpoint can catch them directly without needing to
+   inspect a wrapped exception's cause chain. Closes the precision gap
+   this issue originally flagged as future work, now rather than later.
 
-Good news found while checking this: the "false EXECUTED row" concern
-raised earlier is **less severe than it looked** — Abdoul's `execute()`
-already wraps *any* exception from `commit_field_write` in
-`WriteExecutionFailedAfterApprovalError`, a deliberate, documented
-design choice (commits the `EXECUTED` flip immediately rather than
-holding a Postgres lock across the Sheets API call, accepting that a
-downstream failure is discovered after the flip). So a `StaleWriteError`
-won't leave a *silently* incorrect row — it'll correctly surface as
-"marked executed, but the write failed," same as any other write
-failure. The only real loss is precision: Step 3's interface, when
-built, should specifically unwrap `StaleWriteError` to tell the rep
-"this changed, please re-review" rather than a generic failure message
-— a UX nice-to-have, not a correctness gap.
+Also added `tests/test_update_lead_sheet.py::test_execute_raises_stale_write_error_if_the_cell_changed_since_staging`
+— proves a stale approval is rejected rather than silently overwriting
+another rep's (or a direct Sheets-UI) edit, and that the gate is still
+correctly consumed (single-use survives a failed write, same documented
+trade-off as any other write failure) even though the sheet itself was
+never touched. `tests/fakes.py`'s `FakeLeadSourceConnector` was also
+updated to enforce the same `expected_current`/`StaleWriteError`
+contract the real connector does — it was stale prior to this fix and
+had been silently masking the missing argument in every existing test.
 
 ## Notes
 
