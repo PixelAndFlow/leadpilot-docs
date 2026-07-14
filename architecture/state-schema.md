@@ -166,13 +166,14 @@ concurrently. Now that the batch run is per-rep rather than global
 two concurrent runs for the *same* rep still can't overlap) instead of
 one lock for the whole job. Exact schema change is Step 2 work, not
 designed here yet — flagging so it isn't missed when `fetch_all_leads`
-is actually built against the per-rep model. **Status genuinely
-unclear as of 2026-07-13:** this decisions log's "Migration-head
-correction" note claims this rework is already done and merged
-(`cd645f125bf4`), but that migration isn't reachable in the local
-`leadpilot` checkout Decision 034 was built against (no matching
-commit, branch, or remote-tracking ref) — don't trust either claim
-without checking the real repo state directly first.
+is actually built against the per-rep model. **Confirmed done, on
+`origin/abdouls-branch` (not yet merged to `main`):** briefly looked
+unreachable from the local `leadpilot` checkout Decision 034 was built
+against, but that was a stale remote-tracking ref, not a real gap —
+`cd645f125bf4` (this rework) and all 5 of Group A's tools are real and
+present once that branch's current tip is checked. See the
+"Migration-head question" note in decisions/README.md's Decision 034
+entry for the full story.
 
 ## Sheet-cell write lock (new — Decision 034)
 

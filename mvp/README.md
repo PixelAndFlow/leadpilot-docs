@@ -340,14 +340,18 @@ Twilio credential check changed the `send_lead_text` reasoning).
       `GoogleSheetsConnector.commit_field_write` now requires a
       keyword-only `expected_current` argument and can raise
       `StaleWriteError`/`ConcurrentWriteError` — closes a same-cell
-      concurrent-write race Marc found. This tool's `execute()` (the
-      part that actually calls `commit_field_write` after
-      `gate.try_execute()`) needs to pass the diff's original
-      `current` value through and handle both new exceptions by
-      surfacing a fresh diff to the rep, not retrying silently. Not
-      yet applied here since this tool's file isn't present in the
-      checkout this fix was built against — see
-      `testing/known-issues-log.md` Issue 006.
+      concurrent-write race Marc found. Confirmed directly against the
+      real file on `origin/abdouls-branch`: `run()` already computes
+      `diff.current` but never persists it into `content_ref`, so
+      `execute()` has nothing to pass yet — needs a `current` field
+      added to `_encode_content_ref`/`_decode_content_ref`, plus
+      `expected_current=info.get("current")` added to the
+      `commit_field_write` call. Not yet applied — this fix was built
+      on `marc-step2-split`, which hasn't merged `abdouls-branch` in —
+      see `testing/known-issues-log.md` Issue 006 for the precise diff
+      and confirmation that `execute()`'s existing
+      `WriteExecutionFailedAfterApprovalError` handling already covers
+      the "don't leave a silently-wrong executed row" concern.
 - [x] `verify_drive_contents` — same per-rep OAuth model as Sheets, but
       Drive API, not Sheets API — no service-account version to
       retrofit, built rep-scoped from the start. Not built against the

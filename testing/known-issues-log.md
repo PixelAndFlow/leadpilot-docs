@@ -181,40 +181,55 @@ a new `sheet_cell_locks` table serializes concurrent commits to the
 same cell. Full mechanism, alternatives considered, and test coverage
 in Decision 034's entry.
 
-**Not yet verified — same caveat as every other piece of code built in
-this sandbox this week:** no Postgres binary and no PyPI/network access
-here, so the migration (`fed4e55c9f58_add_sheet_cell_locks_table.py`)
-has never actually been run, and the new/updated tests
-(`tests/test_google_sheets_connector.py`,
+**Not yet verified:** no Postgres binary and no PyPI/network access in
+the sandbox this was built in, so the migration
+(`fed4e55c9f58_add_sheet_cell_locks_table.py`) has never actually been
+run, and the new/updated tests (`tests/test_google_sheets_connector.py`,
 `tests/test_locks.py`'s new `sheet_cell_lock` tests, and the fixed
 call sites in `tests/test_google_sheets_connector_live.py`) have never
-actually been executed. **Also unresolved: which migration is the real
-current head** — see Decision 034's caveat about `cd645f125bf4`
-possibly already existing upstream and not being reachable from this
-sandbox's local checkout. Before treating this as done: pull the real
-latest code from GitHub, resolve the migration-head question, run
-`alembic upgrade head`, then `pytest tests/test_locks.py
-tests/test_google_sheets_connector.py tests/test_google_sheets_connector_live.py`.
-Also not yet done: `update_lead_sheet` (Group A/Abdoul's tool — not
-present in this local checkout to update directly) needs to actually
-pass `expected_current` and handle the two new exceptions once it's
-being worked on.
+actually been executed — syntax-checked only. Run `alembic upgrade
+head` then `pytest tests/test_locks.py
+tests/test_google_sheets_connector.py tests/test_google_sheets_connector_live.py`
+locally for real evidence.
 
-**Follow-up gap found 2026-07-13, while answering Marc's question
-about this fix's blast radius if it has a bug:** connectors/base.py's
-own documented contract says `commit_field_write` is only meant to be
-called *after* `gate.try_execute()` has already flipped the
-`contact_history` row to `executed` (same convention as every other
-tool). That means a `StaleWriteError`/`ConcurrentWriteError` raised
-inside `commit_field_write` happens *after* the row is already marked
-`executed` — leaving a false "executed" audit entry for a write that
-never actually landed. This is the exact same class of bug caught and
-fixed in `send_lead_email` earlier this session (check risky
-preconditions before flipping the gate, not after), reappearing here
-because it can't be fixed at the call site until `update_lead_sheet`'s
-real `execute()` exists to edit. Whoever builds it needs to catch both
-new exceptions and correct the row's recorded outcome (not leave it
-silently `executed`) rather than just letting the exception propagate.
+**Migration-head question — resolved 2026-07-13, not actually a
+mystery:** `cd645f125bf4` is real and confirmed — it's on
+`origin/abdouls-branch` (tip `5bcae57` as of this correction, which
+also carries all 5 of Group A's tools; see the mvp/README.md
+correction below). It hasn't been fetched into `main`/
+`marc-step2-split` yet, which is why it looked unreachable earlier.
+`cd645f125bf4` and this fix's `fed4e55c9f58` are **sibling**
+migrations — both branch off `d2caf87d6b35`, neither depends on the
+other — so once `abdouls-branch` is merged into `main`, `alembic
+heads` will correctly show two heads needing one ordinary `alembic
+merge` to reconcile. Not a sign anything is broken, just the standard
+two-people-added-a-migration-in-parallel situation.
+
+**`update_lead_sheet` integration — now precisely known, not just
+flagged:** confirmed by reading the real file on `origin/abdouls-branch`
+(`src/leadpilot/tools/update_lead_sheet.py`). Two things it needs once
+this fix is merged in:
+1. `_encode_content_ref`/`_decode_content_ref` need a `current` field
+   added — `run()` already computes `diff.current` but never persists
+   it, so `execute()` currently has nothing to pass as
+   `expected_current`.
+2. `execute()`'s `connector.commit_field_write(...)` call needs
+   `expected_current=info.get("current")` added (`.get`, not `[]`, so
+   any row staged before this change doesn't KeyError).
+
+Good news found while checking this: the "false EXECUTED row" concern
+raised earlier is **less severe than it looked** — Abdoul's `execute()`
+already wraps *any* exception from `commit_field_write` in
+`WriteExecutionFailedAfterApprovalError`, a deliberate, documented
+design choice (commits the `EXECUTED` flip immediately rather than
+holding a Postgres lock across the Sheets API call, accepting that a
+downstream failure is discovered after the flip). So a `StaleWriteError`
+won't leave a *silently* incorrect row — it'll correctly surface as
+"marked executed, but the write failed," same as any other write
+failure. The only real loss is precision: Step 3's interface, when
+built, should specifically unwrap `StaleWriteError` to tell the rep
+"this changed, please re-review" rather than a generic failure message
+— a UX nice-to-have, not a correctness gap.
 
 ## Notes
 
