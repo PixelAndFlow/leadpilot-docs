@@ -1,5 +1,20 @@
 # LeadPilot interface — implementation state, for the designer
 
+> **RESOLVED 2026-07-14:** the designer's artifact arrived
+> (`mockups/leadpilot_glass_reference.html`) and its values were
+> ported 1:1 the same day — every suspect below was confirmed real
+> (inset top-sheen, Inter-first font stack, richer background stack
+> with luminance ramp + neutral orb + vignette, 1560px layout
+> ceiling), plus component details the prose spec never captured
+> (segmented tab control, accent-light card headers, neutral R2/R3
+> pills, amber urgent-approve button, avatar in the lead header).
+> `assets/*.png` now shows the post-port state. Two deliberate
+> deviations from the artifact, both Marc's later decisions:
+> accent-tinted hover states (A14 — artifact hovers are white-alpha)
+> and drag-resizable panes (artifact has fixed widths; its 240/280px
+> became our defaults). This doc is kept for the history/method; the
+> artifact is the styling source of truth going forward.
+
 **Date:** 2026-07-14
 **Audience:** the designer (Marc's claude.ai design session) whose
 mockups produced `leadpilot_interface_design_spec_v001.md`.

@@ -149,6 +149,25 @@ misread, and semantic colors never re-theme. (Marc briefly asked for
 Reject to hover accent too, then reversed within minutes and
 confirmed the red exception stands.)
 
+### A15. Designer's artifact ported 1:1 (2026-07-14)
+`mockups/leadpilot_glass_reference.html` (the design LLM's export,
+added by Marc) superseded all prose transcriptions of the glass
+system — its values were ported verbatim into `app.css`. Confirmed
+gaps the prose specs had lost: inset top-sheen on every surface,
+Inter-first font stack, the full background stack (luminance ramp +
+two viewport-relative accent ellipses + neutral white orb + corner
+vignette), 1560px workspace ceiling with centered layout, segmented
+tab control, accent-light card headers, neutral R2/R3 rank pills
+(semantic colors reserved for meaning, not rank), amber
+urgent-approve button, avatar in the lead header, hairline-separated
+uppercase-label diff rows. Kept over the artifact (Marc's later
+decisions, flagged for the designer): A14 accent-tinted hovers
+(artifact hovers white-alpha) and drag-resizable panes (artifact
+fixed at 240/280px — now our resize defaults). Also kept: the
+background pattern picker (A13), with the artifact's accent-orb
+layer as the default and the ramp/orb/vignette depth invariant
+across all pattern choices.
+
 ## B. Implementation decisions
 
 - **htmx 1.9.12 vendored** at `static/js/htmx.min.js` — no CDN
