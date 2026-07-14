@@ -160,6 +160,46 @@ Move this issue to Resolved once `supporttest.py` is deleted, the
 Twilio credentials are rotated, and the root cause of `Policy
 evaluation failed` is confirmed.
 
+## Issue 006 — Same-cell concurrent spreadsheet writes could silently clobber each other
+
+Opened: 2026-07-13
+Status: Resolved (see Decision 034 in decisions/README.md) — **with an open verification gap, see below**
+Description: Marc asked what happens if two reps (or two overlapping
+runs) try to edit the same spreadsheet cell at once. Checked the real
+code: `GoogleSheetsConnector.commit_field_write` was a plain
+`values().update()` with no check against what the rep actually
+approved — last-write-wins, no conflict detected, nothing logged.
+`LeadActionLock`/`AgentRunLock` don't cover this (different concerns —
+outreach cooldown and cron-run mutex, not spreadsheet cell writes).
+Impact: A rep's approved edit could be silently overwritten by another
+rep's (or the same rep's overlapping run's) approved edit to the same
+cell, with no error, no log entry, and no way to tell it happened after
+the fact.
+Resolution: Decision 034 — `commit_field_write` now requires an
+`expected_current` argument and raises `StaleWriteError` on mismatch;
+a new `sheet_cell_locks` table serializes concurrent commits to the
+same cell. Full mechanism, alternatives considered, and test coverage
+in Decision 034's entry.
+
+**Not yet verified — same caveat as every other piece of code built in
+this sandbox this week:** no Postgres binary and no PyPI/network access
+here, so the migration (`fed4e55c9f58_add_sheet_cell_locks_table.py`)
+has never actually been run, and the new/updated tests
+(`tests/test_google_sheets_connector.py`,
+`tests/test_locks.py`'s new `sheet_cell_lock` tests, and the fixed
+call sites in `tests/test_google_sheets_connector_live.py`) have never
+actually been executed. **Also unresolved: which migration is the real
+current head** — see Decision 034's caveat about `cd645f125bf4`
+possibly already existing upstream and not being reachable from this
+sandbox's local checkout. Before treating this as done: pull the real
+latest code from GitHub, resolve the migration-head question, run
+`alembic upgrade head`, then `pytest tests/test_locks.py
+tests/test_google_sheets_connector.py tests/test_google_sheets_connector_live.py`.
+Also not yet done: `update_lead_sheet` (Group A/Abdoul's tool — not
+present in this local checkout to update directly) needs to actually
+pass `expected_current` and handle the two new exceptions once it's
+being worked on.
+
 ## Notes
 
 - Move an issue to "Resolved" and reference the decisions/ entry that

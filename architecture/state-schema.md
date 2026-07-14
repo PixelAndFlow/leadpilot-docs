@@ -166,7 +166,33 @@ concurrently. Now that the batch run is per-rep rather than global
 two concurrent runs for the *same* rep still can't overlap) instead of
 one lock for the whole job. Exact schema change is Step 2 work, not
 designed here yet — flagging so it isn't missed when `fetch_all_leads`
-is actually built against the per-rep model.
+is actually built against the per-rep model. **Status genuinely
+unclear as of 2026-07-13:** this decisions log's "Migration-head
+correction" note claims this rework is already done and merged
+(`cd645f125bf4`), but that migration isn't reachable in the local
+`leadpilot` checkout Decision 034 was built against (no matching
+commit, branch, or remote-tracking ref) — don't trust either claim
+without checking the real repo state directly first.
+
+## Sheet-cell write lock (new — Decision 034)
+
+A fourth table, `sheet_cell_locks` — same shape and same atomic
+`INSERT ... ON CONFLICT DO UPDATE ... WHERE` pattern as
+`agent_run_locks`/`lead_action_locks`, but keyed by a
+`"{source_id}:{row_ref}:{field_name}"` string rather than a lock name
+or a `lead_id` FK, since the resource being protected (a specific
+spreadsheet cell) isn't a LeadPilot-owned row. Closes a real race
+condition: `GoogleSheetsConnector.commit_field_write` had no
+compare-and-swap against what the rep actually approved, so two reps
+(or two overlapping runs) editing the same cell could silently
+clobber each other. Paired with an optimistic `expected_current` value
+check in `commit_field_write` itself — the lock alone can't catch a
+rep editing the sheet directly in Google's UI, bypassing LeadPilot
+entirely, so the value check is what actually catches that case. See
+`leadpilot/models/run_lock.py`, `leadpilot/locks.py`,
+`leadpilot/connectors/base.py`/`google_sheets.py`, and Decision 034
+for the full mechanism and an important open caveat about which
+migration is actually current head.
 
 ## Rep Google credentials (new — Decision 026)
 

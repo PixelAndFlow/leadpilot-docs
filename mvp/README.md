@@ -335,6 +335,19 @@ Twilio credential check changed the `send_lead_text` reasoning).
       which would've silently broken every tool-registration test
       after it in file-execution order (including future tools, not
       just this one) — see `leadpilot/tools/base.py`
+
+      **Interface change, 2026-07-13 (Decision 034):**
+      `GoogleSheetsConnector.commit_field_write` now requires a
+      keyword-only `expected_current` argument and can raise
+      `StaleWriteError`/`ConcurrentWriteError` — closes a same-cell
+      concurrent-write race Marc found. This tool's `execute()` (the
+      part that actually calls `commit_field_write` after
+      `gate.try_execute()`) needs to pass the diff's original
+      `current` value through and handle both new exceptions by
+      surfacing a fresh diff to the rep, not retrying silently. Not
+      yet applied here since this tool's file isn't present in the
+      checkout this fix was built against — see
+      `testing/known-issues-log.md` Issue 006.
 - [x] `verify_drive_contents` — same per-rep OAuth model as Sheets, but
       Drive API, not Sheets API — no service-account version to
       retrofit, built rep-scoped from the start. Not built against the
