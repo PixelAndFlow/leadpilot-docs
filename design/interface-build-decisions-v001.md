@@ -136,6 +136,17 @@ Default is aurora at the spec's prototyped subtlety; "None" remains
 one click away in the appearance popover. Sound default stays OFF; all
 seven themes ship (trimming later = deleting CSS lines).
 
+### A14. Hover/highlight states are accent-tinted (Marc, 2026-07-14)
+Reverses the earlier white-alpha-only hover rule (part of the "accent
+only on: rank pills, primary buttons, selected states, links, icons,
+focus glow" constraint in Marc's glass system). Marc saw the accent
+click-glow, liked it, and decided hover/highlight belongs on the
+accent list too: generic buttons, queue items, tabs, and timeline
+entries now hover with `rgba(var(--ar), ~0.08–0.12)` tint instead of
+white-alpha. Exception kept deliberately: the Reject button's hover
+stays semantic red — accent-tinting a destructive control would
+misread, and semantic colors never re-theme.
+
 ## B. Implementation decisions
 
 - **htmx 1.9.12 vendored** at `static/js/htmx.min.js` — no CDN
