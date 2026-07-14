@@ -200,6 +200,22 @@ present in this local checkout to update directly) needs to actually
 pass `expected_current` and handle the two new exceptions once it's
 being worked on.
 
+**Follow-up gap found 2026-07-13, while answering Marc's question
+about this fix's blast radius if it has a bug:** connectors/base.py's
+own documented contract says `commit_field_write` is only meant to be
+called *after* `gate.try_execute()` has already flipped the
+`contact_history` row to `executed` (same convention as every other
+tool). That means a `StaleWriteError`/`ConcurrentWriteError` raised
+inside `commit_field_write` happens *after* the row is already marked
+`executed` — leaving a false "executed" audit entry for a write that
+never actually landed. This is the exact same class of bug caught and
+fixed in `send_lead_email` earlier this session (check risky
+preconditions before flipping the gate, not after), reappearing here
+because it can't be fixed at the call site until `update_lead_sheet`'s
+real `execute()` exists to edit. Whoever builds it needs to catch both
+new exceptions and correct the row's recorded outcome (not leave it
+silently `executed`) rather than just letting the exception propagate.
+
 ## Notes
 
 - Move an issue to "Resolved" and reference the decisions/ entry that
