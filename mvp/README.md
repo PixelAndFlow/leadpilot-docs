@@ -525,8 +525,23 @@ verification (Issue 005).
 
 **Neither group — do this before/alongside either, whoever gets to it
 first:**
-- [ ] Prompt-injection validation layer (Decision 006) — cross-cutting,
-      not owned by either tool group
+- [x] Prompt-injection validation layer (Decision 006) — built by
+      Abdoul 2026-07-13. `leadpilot/injection_guard.py`, a
+      deterministic keyword/pattern check (not the LLM itself, per
+      Decision 006's "strict programmatic script"), hooked into
+      `lead_ingest.upsert_lead_for_record` — the one chokepoint both
+      `fetch_all_leads` and `fetch_ad_hoc_sheet` already funnel every
+      fetched row through, rather than duplicated per-tool. A matched
+      field is replaced entirely with a fixed placeholder (per the
+      PRD's CRITICAL SECURITY GUARD, "replace with standard business
+      templates"), dedup matching runs against the original
+      unsanitized value first so two unrelated flagged rows can't
+      collide into one fabricated lead, and `record_to_dict` now
+      returns a `flagged` bool for a future Step 4 agent loop to wire
+      into the "Needs Manual Review" output. `tests/test_injection_guard.py`
+      (11 tests) includes `testing/eval-suite.md` Case 3's exact attack
+      string run end-to-end through the real `fetch_all_leads`
+      pipeline — see that eval case's updated result below
 
 ### Step 3 — the interface
 
