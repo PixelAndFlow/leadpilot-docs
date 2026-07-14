@@ -43,14 +43,21 @@ Never overwrite the current version — always create a new file.
       revisit/change the schema itself. v002 added the code-repo-side
       public ROADMAP.md convention.
 
-  leadpilot_interface_design_context-v001.md     Active — use this one
+  leadpilot_interface_design_context-v002.md     Active — use this one
+  leadpilot_interface_design_context-v001.md     Previous — kept for reference
 
       Scoped tightly to Step 3 (dashboard) design work, not general
       project restore — screen list, real tool output data shapes, the
       approval-gate interaction pattern that constrains every screen,
       and the locked Jinja2/htmx (not React SPA) tech constraint. Paste
       this into a session with a design-focused LLM instead of the
-      general leadpilot_context file above.
+      general leadpilot_context file above. v002 added: a rep's-day
+      workflow narrative, a dedicated section on why contact-history
+      visibility is the product's emotional core, a "what matters to a
+      salesperson" section, and verified data shapes for the 3 Group A
+      tools v001 had flagged as unconfirmed (fetch_all_leads/
+      fetch_ad_hoc_sheet's per-row shape, verify_drive_contents,
+      log_call_outcome).
 
 ## Size target
 
