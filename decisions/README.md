@@ -85,10 +85,12 @@ considered.
   just static service secrets
 - Exact schema for `agent_run_locks` moving from a singleton mutex to
   a per-rep mutex (Decision 027) — flagged, not designed; Step 2 work
-- Google Picker UI integration point in the dashboard (Decision 026) —
-  where in the rep-facing interface "Connect Google Account" and
-  per-sheet selection live; not designed yet, likely a Step 3 item
-  alongside the rest of the unified interface
+- ~~Google Picker UI integration point in the dashboard (Decision
+  026)~~ — **Resolved, see `context-files/leadpilot_interface_design_spec_v001.md`
+  §6b.** Lives as a slide-over: consent explainer with plain-language
+  scope chips, then (after connect) the Picker list with multi-select
+  and a confirmation naming exactly what was granted. Also the entry
+  point for `fetch_ad_hoc_sheet`.
 - Whether Gmail (Step 2, `send_lead_email`) shares the same OAuth
   client/consent screen as the `drive.file` grant (Decision 026) or
   needs its own separate client — not evaluated yet
