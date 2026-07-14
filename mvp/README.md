@@ -543,14 +543,28 @@ first:**
 
 ### Step 3 — the interface
 
-- [ ] Prioritized queue view
-- [ ] Approve/reject flow wired to the status-flip mechanism
+Built 2026-07-14 on `marc-interface-build` (Decision 036), per
+`context-files/leadpilot_interface_design_spec_v001.md` — full
+10-screen scope, not just the six items below. Verified by 22 new
+real-Postgres tests (`tests/test_ui.py`, suite at 215 passed) and a
+live seeded walkthrough (`scripts/seed_demo_data.py`); autonomous
+build decisions logged in `design/interface-build-decisions-v001.md`.
+Not yet verified against the eval suite (that's Step 4) or eyeballed
+in a real browser by Marc/Abdoul.
+
+- [x] Prioritized queue view (interim rank heuristic until Step 4's
+      agent output — see the build-decisions log, A9)
+- [x] Approve/reject flow wired to the status-flip mechanism
       (Decision 021) — this is where "approval" actually becomes real
-- [ ] Spreadsheet diff view (current-vs-proposed)
-- [ ] Communications search box
-- [ ] Call-outcome quick action — UI flow not designed yet, design it
-      here (Decision 020's open item)
-- [ ] Back-office handoff review card (all three message types)
+- [x] Spreadsheet diff view (current-vs-proposed), including Decision
+      034's stale-write recovery panel
+- [x] Communications search box (SMS name-search limitation designed
+      into the UI per spec §6h)
+- [x] Call-outcome quick action — spec §6f's two-moment design
+      (inline card row + persistent amber queue strip), resolving
+      Decision 020's open item
+- [x] Back-office handoff review card (all three message types;
+      urgent changes prominence and sort order, never the gate)
 
 ### Step 4 — wire it together and test
 
