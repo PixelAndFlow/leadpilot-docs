@@ -26,6 +26,7 @@ determine Rank 1/2/3.
 | `outcome` | enum, nullable | See "Outcome visibility" below — this is where the gap is |
 | `content_ref` | string | Reference/snippet of the drafted content (subject to the retention policy still open in compliance/README.md) |
 | `note` | string, nullable | Free text — primarily used for rep-reported call outcomes |
+| `message_type` | enum, nullable | `completion_handoff` / `info_request` / `urgent_callback_request` — which of `dispatch_slack_handoff`'s three message types this row is; null for every other tool. Added by Decision 035, replacing an earlier stopgap that overloaded `note` for this |
 
 ## Rep-approval mechanism (resolves Issue 003)
 

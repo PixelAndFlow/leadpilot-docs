@@ -470,18 +470,16 @@ bugs), and pushed (`3dc3a52`).
 - [x] `dispatch_slack_handoff` — Slack, all three message types.
       `leadpilot/tools/dispatch_slack_handoff.py`, tested in
       `tests/test_dispatch_slack_handoff.py` (10 tests, passing as of
-      2026-07-13). **Open schema gap, not yet resolved:** the message
-      type is currently stored in `contact_history.note` rather than a
-      dedicated column — flagged in decisions/README.md's "Open
-      decisions" pending Abdoul's input on the schema question. The
-      migration-ordering half of that note is now moot: `cd645f125bf4`
-      (Abdoul's `agent_run_locks` migration) and `fed4e55c9f58` (Decision
-      034's `sheet_cell_locks` migration) turned out to be sibling
-      migrations off the same prior head, not a shared head needing
-      careful sequencing — both landed cleanly in the `main` merge
-      2026-07-13 with a single resulting chain, no `alembic merge`
-      needed. A future `message_type` migration should chain off the
-      current real head, `fed4e55c9f58`
+      2026-07-13). **Schema gap resolved 2026-07-13 (Abdoul, Decision
+      035):** `contact_history` now has a dedicated `message_type`
+      column — `note` was a stopgap that overloaded one column with two
+      unrelated meanings (this tool's message type vs.
+      `log_call_outcome`'s free-text call notes). Migration `d006ca87ab77`
+      chains cleanly off the real current head (`fed4e55c9f58`,
+      confirming the "sibling migrations, no `alembic merge` needed"
+      prediction was right). `dispatch_slack_handoff.py` and
+      `get_contact_history.py` both updated to use the real column; one
+      test that asserted directly against `row.note` updated to match
 - [x] `search_communications` — Twilio (SMS) + Gmail (email search),
       same Gmail-scope dependency as `send_lead_email` above.
       `leadpilot/tools/search_communications.py`, tested in
