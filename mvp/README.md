@@ -427,6 +427,20 @@ Twilio credential check changed the `send_lead_text` reasoning).
 **Group A complete as of 2026-07-12 — all 5 tools built, tested, and
 live-verified where a live path exists.** 121 passed, 0 skipped.
 
+**Merged to `main` 2026-07-13** (commit `41a7bd9`, both `abdouls-branch`
+and `marc-step2-split` combined) — one real conflict, confined to
+`src/leadpilot/google_oauth.py` (both branches independently extended
+the same docstring paragraph and `SCOPES` list — Decision 033's
+`drive.readonly` vs. Group B's two Gmail scopes), resolved by combining
+both explanations and all four scopes, nothing else conflicted.
+Immediately after the merge, `update_lead_sheet.py` needed a real fix
+to match Decision 034's `commit_field_write` interface change — see
+`testing/known-issues-log.md` Issue 006's "done, not just planned"
+update and Decision 034's entry for full detail. Fixed, tested (182
+passed against the fully merged `main`, 0 unexpected failures — the 9
+live-test failures are an expected OAuth-reconnect situation, not code
+bugs), and pushed (`3dc3a52`).
+
 **Group B — Marc (read-only + outreach/communication APIs, 6 tools):**
 - [x] `get_contact_history` — reads the existing `contact_history`
       log; no external API, no dependency on any other tool.
@@ -459,9 +473,15 @@ live-verified where a live path exists.** 121 passed, 0 skipped.
       2026-07-13). **Open schema gap, not yet resolved:** the message
       type is currently stored in `contact_history.note` rather than a
       dedicated column — flagged in decisions/README.md's "Open
-      decisions" pending Abdoul's input, both on the schema question
-      and on migration-ordering against his `agent_run_locks`
-      migration (same current head)
+      decisions" pending Abdoul's input on the schema question. The
+      migration-ordering half of that note is now moot: `cd645f125bf4`
+      (Abdoul's `agent_run_locks` migration) and `fed4e55c9f58` (Decision
+      034's `sheet_cell_locks` migration) turned out to be sibling
+      migrations off the same prior head, not a shared head needing
+      careful sequencing — both landed cleanly in the `main` merge
+      2026-07-13 with a single resulting chain, no `alembic merge`
+      needed. A future `message_type` migration should chain off the
+      current real head, `fed4e55c9f58`
 - [x] `search_communications` — Twilio (SMS) + Gmail (email search),
       same Gmail-scope dependency as `send_lead_email` above.
       `leadpilot/tools/search_communications.py`, tested in
