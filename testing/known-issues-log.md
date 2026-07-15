@@ -344,3 +344,30 @@ Picker for per-file grants to register server-side (see the setAppId
 lesson in the code repo's CLAUDE.md). A native browser would need a
 scope-model rethink — pairs with Decision 033's flagged revisit.
 Impact: Cosmetic — a bright white modal in an otherwise dark UI.
+
+## Issue 011 — Status lives in cell background colors, not text (future version)
+
+Opened: 2026-07-15 (Marc's live walkthrough)
+Status: Open — needs a design discussion before building
+Description: Marc's real intake sheets encode each lead's status as
+the ROW'S BACKGROUND COLOR, with a legend row (above or below the
+header row depending on the sheet) mapping colors to statuses (e.g. a
+green swatch labeled FUNDED). The Sheets *values* API LeadPilot reads
+returns text only — colors are completely invisible to it. Reading
+them needs `spreadsheets.get` with `includeGridData=true` (a much
+heavier response), color-matching each data row against the legend
+swatches (with tolerance — theme colors vary), and resolving the
+legend's color→status-name mapping from the legend row's cell fills +
+text. Doable, but a real feature with real design questions (what
+wins when a sheet has BOTH a Status column and row colors? what if a
+row's color matches no swatch?).
+Interim state shipped 2026-07-15: header-row auto-detection (legend
+above headers no longer breaks ingestion), legend rows are skipped
+instead of ingesting as junk "(no name)" leads, and the rep-confirmed
+"create a Status column" flow gives status a text home LeadPilot can
+read/write today. The v1 status vocabulary (Funded/Approved/Deal
+In/App In/Interested/Dead, blank valid) is documented in
+architecture/state-schema.md.
+Impact: Until built, the status baked into existing sheets' colors is
+invisible to LeadPilot — reps must populate the text Status column
+(manually or via approved LeadPilot edits) for status to flow.
