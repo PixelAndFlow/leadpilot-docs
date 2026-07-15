@@ -292,3 +292,55 @@ unknowingly approve, another contact attempt. Full detail, proposed
 
 - Move an issue to "Resolved" and reference the decisions/ entry that
   resolved it once fixed — don't delete the history.
+
+## Issue 008 — .xlsx files are pickable-looking but unreadable (future version)
+
+Opened: 2026-07-15 (Marc's first live Picker walkthrough)
+Status: Open — deferred to a future version by Marc; picker-side
+prevention shipped same day
+Description: Google Drive treats uploaded `.xlsx` files as
+"spreadsheets" for browsing purposes, but the Sheets API cannot read
+them — only native Google Sheets. Marc picked four `.xlsx` files, all
+four granted successfully, and every read then failed with the
+connector's (correct) "granted but is not a Google Sheet" rejection.
+Opening an `.xlsx` in Google Sheets does NOT convert it (Office
+compatibility mode keeps the original file/mime); conversion requires
+File → Save as Google Sheets, which creates a new file with a new id.
+Mitigation shipped 2026-07-15: the sheets Picker view now filters to
+`application/vnd.google-apps.spreadsheet` so unreadable files can't be
+picked in the first place.
+Future version: real `.xlsx` support (Drive download + openpyxl-style
+parsing through the connector interface), or at minimum an in-UI
+indicator/conversion prompt when a rep's Drive has `.xlsx` intake
+files, so "my sheets don't show up" has an explanation in-product.
+Impact: Reps whose intake data arrives as `.xlsx` (common from
+exports) must manually convert each file before LeadPilot can read it.
+
+## Issue 009 — Files in the Drive root aren't reachable via the folder-grant flow (future version)
+
+Opened: 2026-07-15 (same walkthrough)
+Status: Open — deferred to a future version by Marc
+Description: The document-check flow grants Drive *folders*
+(verify_drive_contents inspects a folder's contents). Files sitting
+in the rep's My Drive root aren't inside any pickable folder, so they
+can't be covered by a folder grant — the picker asks for a folder and
+root-level files are invisible to the flow.
+Future version: let the rep grant individual files for document
+checks, and/or treat "root" as a grantable container.
+Impact: Reps who keep deal documents loose in the Drive root get
+"missing document" results even though the files exist.
+
+## Issue 010 — Google Picker widget ignores the app's theme (future version)
+
+Opened: 2026-07-15 (same walkthrough)
+Status: Open — deferred; confirmed not quickly fixable
+Description: The Picker renders white/light regardless of LeadPilot's
+glass theme. Confirmed structural: the Picker is a Google-hosted
+iframe with no theming/dark-mode API — nothing on our side can style
+its internals. The only real fix is replacing the Picker with a
+LeadPilot-native file browser, which is a significant lift because
+Decision 026's `drive.file` scope model *requires* Google's own
+Picker for per-file grants to register server-side (see the setAppId
+lesson in the code repo's CLAUDE.md). A native browser would need a
+scope-model rethink — pairs with Decision 033's flagged revisit.
+Impact: Cosmetic — a bright white modal in an otherwise dark UI.
