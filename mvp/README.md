@@ -607,8 +607,21 @@ and the live eval harness (`scripts/run_evals.py`).
       (testing/known-issues-log.md Issue 004)
 - [ ] Real written partnership agreement (governance/README.md —
       50/50 and fork rights are confirmed verbally, not yet on paper)
-- [ ] Security review against security/threat-model.md and
-      security/pen-test-checklist.md
+- [x] Security review against security/threat-model.md and
+      security/pen-test-checklist.md — first real pass done 2026-07-15
+      (Decision 038, Abdoul): every checklist item verified by actually
+      testing the bypass, not by reading the code and assuming
+      coverage. 4 real gaps found and fixed (zero-width/homoglyph
+      unicode bypass of the injection guard, exfiltration-phrasing
+      requests it never caught, non-PDF files renamed `.pdf` passing
+      the document-completeness check, approval drafts never actually
+      expiring). 2 items left honestly unchecked as genuine gaps
+      (multi-field split injection, corrupted-but-correctly-typed PDF
+      content) or explicitly-scoped limitations (org-wide approval
+      authority is Decision 036 A12's intentional design, not a bug) —
+      see pen-test-checklist.md for the full per-item breakdown. Not a
+      substitute for professional penetration testing before real
+      client data, per that file's own notes
 - [ ] Soft launch: one rep, one sales org, before opening it up further
 
 ## Phase 1 — explicitly out of scope (confirm with owners before Phase 2 planning)
