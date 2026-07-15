@@ -568,11 +568,29 @@ in a real browser by Marc/Abdoul.
 
 ### Step 4 — wire it together and test
 
-- [ ] Render Cron Job running the full system-prompt sequence hourly
-- [ ] All 11 `testing/eval-suite.md` cases passing against the real
-      implementation, not just designed on paper
-- [ ] Concurrency test for the approval-gate conditional update
-      (Decision 021's open item, unblocked now that Postgres is chosen)
+Built 2026-07-14 on `marc-step4-agent-loop` (Decision 037): the agent
+loop (`agent_loop.py`, PRD v1.06 §3b verbatim), the per-rep batch
+runner + cron entrypoint (`agent_run.py`), the `agent_run_reports`
+audit table, 15 loop tests (fake model, real Postgres — suite at 230),
+and the live eval harness (`scripts/run_evals.py`).
+
+- [x] The batch entrypoint exists and is live-verified locally
+      (`python -m leadpilot.agent_run`) — **deploying it as the actual
+      Render Cron Job is still to do** (Render service config, env
+      vars, schedule; see tech-stack/stack-overview.md)
+- [x] Eval suite run against the real implementation: agent-behavior
+      cases live via scripts/run_evals.py (real claude-opus-4-8, Google
+      faked) — Cases 2, 3, 7, 9, 10 PASS; Case 1 PARTIAL (its Rank 1
+      expectation conflicts with the PRD's own rank rules — reconcile
+      the docs); interface/infra Cases 4, 5, 6, 8, 11 covered
+      continuously by the pytest suite. Per-case results recorded in
+      testing/eval-suite.md
+- [x] Concurrency test for the approval-gate conditional update — has
+      existed since Step 1
+      (`test_gate.py::test_try_execute_is_single_use_under_concurrency`);
+      Step 4 added the loop-level guards on top (LeadActionLock wired
+      as Decision 007's outreach cooldown, per-rep run lock held for
+      the whole agent run)
 
 ### Step 5 — before this touches a real lead
 
