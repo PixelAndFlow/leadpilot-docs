@@ -214,3 +214,22 @@ Encryption-at-rest approach for `refresh_token` (KMS-backed column
 encryption vs. application-level encryption before insert) is not yet
 decided — needs to land alongside the broader secrets-management
 open item (decisions/README.md) before Step 2 builds this table.
+
+## Lead status vocabulary (v1 — provisional, Marc 2026-07-15)
+
+The `status` field (canonical mapping of a sheet's Status/Lead
+Status/Stage column, and the primary field `update_lead_sheet` writes
+back) uses this vocabulary for now:
+
+  Funded · Approved · Deal In · App In · Interested · Dead
+
+Blank is also valid — a lead with no recorded stage yet.
+
+Provisional on purpose: Marc has a fuller list of status options to
+discuss; this set is what gets documented and suggested in the
+interface today. Deliberately NOT enforced as an enum anywhere —
+sheets are rep-owned and may carry other values; the interface
+*suggests* these (datalist on the status edit input) rather than
+rejecting others. Rank-logic semantics per status (e.g. does
+"Interested" imply Rank 1 recency?) are part of the later discussion,
+not defined here. Code constant: `leadpilot/models/leads.py::LEAD_STATUS_OPTIONS`.
