@@ -153,12 +153,53 @@ one way or the other** — flagging it here rather than guessing.
 
 ## Recommendations (proposed only — not implemented, no code changed)
 
-1. **Resolve the B2B/consumer question directly with Marc/Abdoul first** — it decides how urgent #1/#6 are and whether this is even primarily a TCPA/DNC problem or a different regulatory regime (e.g. lending-specific consumer protection rules, which are out of scope for this research pass).
-2. **Add a suppression mechanism** — e.g. a `do_not_contact` flag (or a small dedicated table, matching the existing `lead_action_locks`/`sheet_cell_locks` pattern of a purpose-built table rather than overloading an existing one) keyed by lead, with a channel (call/text/email), a reason, and a timestamp. Check it as a hard gate in `send_lead_text`, `send_lead_email`, and `initiate_lead_call` at **draft time** (`create_draft`), not just execute time — so a suppressed lead's entry never even reaches the rep's approval queue, rather than relying on the rep to notice and reject it.
-3. **Add an inbound Twilio webhook** that writes STOP-style replies straight into that suppression table, rather than trusting Twilio's own (unverified) account-level handling silently.
-4. **Add CAN-SPAM's required elements to the email template** — physical address and unsubscribe instructions, likely via a fixed footer appended in `execute_send_lead_email` rather than left to the agent's drafted `body` to remember every time.
-5. **Add a `consent_source`/`consent_captured_at` field** to `Lead`, populated from whatever the sales org's own upstream process already captures (their lead-gen form, presumably) — mostly a documentation/audit-trail question: does LeadPilot need to *verify* consent exists, or is it reasonable to trust the sales org already has it and record where it came from? That's a policy call, not a code one — flagging rather than deciding.
-6. If the B2B question resolves toward "these are real consumers," add a periodic National DNC Registry scrub before a lead becomes callable/textable.
+**Blocked on a fact only Marc/Abdoul know, not an engineering choice:**
+
+0. **Are the leads LeadPilot contacts individual consumers, or
+   businesses?** Decides how urgent #4 below is and whether the DNC
+   Registry's B2B exemption applies at all. Needed before that item can
+   be scoped, let alone built.
+
+**Buildable now, in priority order:**
+
+1. **Suppression/opt-out table** (closes the consent-tracking and
+   suppression-list gaps together — the highest-leverage single piece,
+   since it's channel-agnostic and gates all three outreach tools). A
+   small dedicated table, matching the existing
+   `lead_action_locks`/`sheet_cell_locks` pattern rather than
+   overloading an existing one: `lead_id`, `channel`
+   (call/text/email/all), `reason`, `source`, `created_at`. Checked as
+   a hard gate inside `send_lead_text`, `send_lead_email`,
+   `initiate_lead_call` at **draft time** (`gate.create_draft`), not
+   just execute time — a suppressed lead never even reaches the rep's
+   approval queue, rather than relying on the rep to notice and reject
+   it. New mechanism, so it gets a Decision log entry alongside the
+   migration, not just silent code.
+2. **Inbound Twilio webhook** — a new route (e.g.
+   `/webhooks/twilio/inbound-sms`) Twilio calls when a lead replies;
+   detects STOP-style replies and writes into the suppression table
+   from #1, rather than trusting Twilio's own (unverified)
+   account-level handling silently. Needs a Twilio Console
+   messaging-webhook URL pointed at a real deployed instance, so it's
+   only fully testable once there's a live Render deploy, not just
+   locally.
+3. **CAN-SPAM footer on emails** — append a fixed footer in
+   `execute_send_lead_email` with unsubscribe instructions and a
+   physical postal address, rather than leaving the agent's drafted
+   `body` to remember both every time. The address itself has to be
+   the sales org's real one — a fact from Marc, not something to
+   invent.
+4. **Consent provenance fields** — add `consent_source`/
+   `consent_captured_at` to `Lead`, populated from whatever the sales
+   org's own upstream process already captures. Lower priority, more
+   of a documentation/audit-trail policy question (does LeadPilot need
+   to *verify* consent exists, or is it reasonable to trust the sales
+   org already has it and record where it came from?) than an
+   engineering one.
+5. **National DNC Registry scrub** — blocked on item 0. If leads turn
+   out to be consumers, this needs a paid registry-check integration
+   (a new external account, similar to the Step 0 accounts work)
+   before a lead is treated as callable/textable.
 
 ## Notes
 
