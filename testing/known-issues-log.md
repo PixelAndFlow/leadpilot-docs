@@ -236,6 +236,31 @@ updated to enforce the same `expected_current`/`StaleWriteError`
 contract the real connector does — it was stale prior to this fix and
 had been silently masking the missing argument in every existing test.
 
+## Issue 007 — No consent/opt-out/DNC suppression tracking for lead outreach
+
+Opened: 2026-07-15
+Status: Open
+Description: Researching TCPA/CAN-SPAM/Do-Not-Call requirements
+(Step 5 item, compliance/tcpa-can-spam-dnc-research.md) and checking
+them against the real code found: no field anywhere (`Lead` model or
+`contact_history`) records whether/when/how a lead consented to be
+called/texted/emailed; no suppression list is checked before
+`send_lead_text`, `send_lead_email`, or `initiate_lead_call` stage a
+draft; no inbound Twilio webhook exists to capture a "STOP" reply into
+LeadPilot's own state (grepped `src/leadpilot/*.py` and
+`src/leadpilot/tools/*.py` directly — confirmed absent, not just
+undocumented); `send_lead_email`'s drafted body has no unsubscribe
+link, physical address, or advertisement disclosure. Separately, it's
+unresolved whether contacted leads are individual consumers or
+business entities — undecided, and it changes which rules apply (the
+Do-Not-Call Registry's B2B exemption specifically).
+Impact: A lead who opts out via a text reply, or verbally tells a rep
+not to be contacted again, has no way to be suppressed from future
+agent-drafted outreach — the agent could draft, and a rep could
+unknowingly approve, another contact attempt. Full detail, proposed
+(not built) fixes, and severity ranking in
+`compliance/tcpa-can-spam-dnc-research.md`.
+
 ## Notes
 
 - Move an issue to "Resolved" and reference the decisions/ entry that

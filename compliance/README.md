@@ -84,6 +84,19 @@ before deploying against a real sales org's data.
   is also a data-handling-agreement consideration: document what
   access logging is kept and for how long.
 
+## TCPA / CAN-SPAM / Do-Not-Call research (added 2026-07-15)
+
+Initial research + gap analysis against the real code done — see
+[`tcpa-can-spam-dnc-research.md`](tcpa-can-spam-dnc-research.md).
+Research only, not implemented and not an attorney review: it found
+LeadPilot currently has no consent tracking, no opt-out/suppression
+list, and no inbound-SMS-reply handling anywhere in the codebase (see
+that file's gap table and `testing/known-issues-log.md` Issue 007).
+Also surfaced an unresolved question that blocks finishing this
+properly: whether contacted leads are individual consumers or
+business entities isn't recorded anywhere, and changes which rules
+(especially the DNC Registry's B2B exemption) actually apply.
+
 ## Rep-approval gating is not a compliance substitute (added 2026-07-08)
 
 The rep-approval gate (every outreach send requires explicit rep

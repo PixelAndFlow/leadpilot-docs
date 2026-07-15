@@ -603,6 +603,15 @@ and the live eval harness (`scripts/run_evals.py`).
 ### Step 5 — before this touches a real lead
 
 - [ ] TCPA/CAN-SPAM/do-not-call compliance work (compliance/README.md)
+      — **research + gap analysis done 2026-07-15** (Abdoul), see
+      `compliance/tcpa-can-spam-dnc-research.md`: no consent tracking,
+      no opt-out/suppression list, and no inbound-SMS-reply handling
+      exist anywhere in the code today (testing/known-issues-log.md
+      Issue 007), and it's still unresolved whether contacted leads
+      are individual consumers or businesses — that answer changes
+      which rules apply. Checkbox stays unchecked: research alone
+      doesn't close this, only building the suppression mechanism (or
+      a documented decision that it's not needed yet) would
 - [ ] `search_communications` compliance/retention review
       (testing/known-issues-log.md Issue 004)
 - [ ] Real written partnership agreement (governance/README.md —
