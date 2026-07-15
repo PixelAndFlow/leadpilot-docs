@@ -27,19 +27,35 @@ Postgres/Neon, Render). Full detail in tech-stack/stack-overview.md.
   # Install dependencies
   pip install -r requirements.txt
 
-  # Run the batch agent loop once, locally, against test data
+  # Run the batch agent loop once, locally, against real (or test) data
   # (no scheduler involved — this is what the Render Cron Job calls)
-  python -m leadpilot.run_batch
+  python -m leadpilot.agent_run
 
   # Run the dashboard/API locally
   uvicorn leadpilot.app:app --reload
 
-  # Run the eval suite (testing/eval-suite.md, all 11 cases)
+  # Run the structural eval-suite regression tests (9 of 11 cases —
+  # Cases 1/2 need a real model and live via scripts/run_evals.py
+  # instead, see below)
   pytest tests/eval_suite/
 
-  # Deploy
-  # Push to main — Render auto-deploys both the Web Service and the
-  # Cron Job from the same repo
+  # Run the full eval suite live against a real model (all 11 cases,
+  # Google faked, staging-only — nothing external can fire). Needs
+  # ANTHROPIC_API_KEY in .env.local.
+  python scripts/run_evals.py
+
+  # Deploy (Decision 022/037, render.yaml added 2026-07-15)
+  # First time only — this repo isn't connected to Render yet:
+  #   1. Render dashboard -> New -> Blueprint -> connect this repo.
+  #      Render reads render.yaml and creates both services
+  #      (leadpilot-web, leadpilot-agent-run) automatically.
+  #   2. Set every env var marked `sync: false` in render.yaml by hand
+  #      in each service's dashboard — real secrets are never in the
+  #      committed file. See "Environment variables required" below
+  #      and secrets-rotation-runbook.md.
+  #   3. Trigger the first deploy from the dashboard.
+  # After that first connection: push to main -> Render auto-deploys
+  # both services from the same repo, no manual step needed.
 
 ## Environment variables required
 

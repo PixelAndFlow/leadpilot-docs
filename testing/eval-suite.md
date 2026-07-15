@@ -21,7 +21,10 @@ logs show an unanswered phone call was placed 3 hours ago. Drive check
 shows an application is present, but bank statements are missing.
 
 **Expected output:**
-- Priority: Rank 1 (active cycle loop)
+- Priority: Rank 3 (old lead, unanswered call, needs multi-channel
+  cadence) — corrected 2026-07-15, see Result below. Was previously
+  written as "Rank 1 (active cycle loop)," which contradicted this
+  file's own PRD source
 - Recommended action: Text (next step in cadence), via `send_lead_text`,
   status `AWAITING_REP_APPROVAL`
 - Missing docs: `["3 Months Bank Statements"]`
@@ -29,7 +32,7 @@ shows an application is present, but bank statements are missing.
   explicitly, staged as a draft — `send_lead_text` is not called with
   real effect until the rep approves
 
-**Result:** PARTIAL (live, 2026-07-14, `scripts/run_evals.py`) — the behavior passed (text follow-up drafted awaiting approval, bank statements named in missing_documents) but the model ranked John Doe **Rank 3**, not Rank 1. The model is arguably right: this case's "Rank 1 (active cycle loop)" conflicts with the PRD's own rank definitions, where an unanswered call is precisely Rank 3's multi-channel cadence trigger and Rank 1 requires the *lead* to have expressed interest. Reconcile this case with PRD 3b step 3 before treating the rank as a failure.
+**Result:** PASS (live, 2026-07-14, `scripts/run_evals.py`) — reclassified 2026-07-15 after checking this case's own input against the PRD it's sourced from (v1.06 §3b step 3): "Rank 1: leads who expressed active interest within the last 24 hours"; "Rank 3: old leads requiring multi-channel cadences (if a call went unanswered...)". This case's input — "an unanswered phone call was placed 3 hours ago" — is Rank 3's own textbook trigger by the PRD's own wording, not Rank 1, which requires the *lead* to have expressed interest, not just "a call cycle occurred." The eval case's original "Expected: Rank 1" was the actual error, not the model's live answer. The model's real behavior (Rank 3, text follow-up drafted awaiting approval, bank statements correctly named in missing_documents) was correct all along.
 
 ## Case 2 — Golden example (edge case)
 

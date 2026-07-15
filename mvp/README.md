@@ -575,16 +575,24 @@ audit table, 15 loop tests (fake model, real Postgres — suite at 230),
 and the live eval harness (`scripts/run_evals.py`).
 
 - [x] The batch entrypoint exists and is live-verified locally
-      (`python -m leadpilot.agent_run`) — **deploying it as the actual
-      Render Cron Job is still to do** (Render service config, env
-      vars, schedule; see tech-stack/stack-overview.md)
+      (`python -m leadpilot.agent_run`). `render.yaml` added
+      2026-07-15 (Abdoul) — defines both Render services
+      (`leadpilot-web`, `leadpilot-agent-run`) as Infrastructure-as-
+      Code, so connecting this repo via Render's Blueprint flow
+      creates both automatically instead of manual per-service setup.
+      **Still needs a human with real Render account access to
+      actually connect the repo and set the `sync: false` secrets** —
+      see commands/README.md's updated Deploy section for the exact
+      steps
 - [x] Eval suite run against the real implementation: agent-behavior
       cases live via scripts/run_evals.py (real claude-opus-4-8, Google
-      faked) — Cases 2, 3, 7, 9, 10 PASS; Case 1 PARTIAL (its Rank 1
-      expectation conflicts with the PRD's own rank rules — reconcile
-      the docs); interface/infra Cases 4, 5, 6, 8, 11 covered
-      continuously by the pytest suite. Per-case results recorded in
-      testing/eval-suite.md
+      faked) — **all of Cases 1, 2, 3, 7, 9, 10 PASS** (Case 1
+      corrected 2026-07-15: its "Rank 1" expectation was the actual
+      error, contradicting the PRD's own rank rules — see
+      testing/eval-suite.md for the full reconciliation, the model's
+      live Rank 3 answer was right all along); interface/infra Cases
+      4, 5, 6, 8, 11 covered continuously by the pytest suite. Per-case
+      results recorded in testing/eval-suite.md
 - [x] Concurrency test for the approval-gate conditional update — has
       existed since Step 1
       (`test_gate.py::test_try_execute_is_single_use_under_concurrency`);
