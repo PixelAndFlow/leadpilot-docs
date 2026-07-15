@@ -91,7 +91,34 @@ client data — see compliance/README.md.
 ## Issue 005 — Twilio trial account blocks phone-number API endpoints
 
 Opened: 2026-07-12
-Status: Open
+Status: Partially resolved (2026-07-15) — calls place successfully;
+the two metadata endpoints are still policy-blocked
+
+**Update 2026-07-15 — support's diagnostic script placed a real call.**
+Marc ran `supporttest.py` and got a real call SID back
+(`client.calls.create()` → 200), proving the account can place
+outbound calls — whatever support adjusted (or the account state
+change since) cleared the path that matters for actual telephony.
+Immediately re-ran the read-only endpoint check
+(`scripts/test_twilio_creds.sh`) the same day: the base Account
+resource is still 200/active/Trial, but `IncomingPhoneNumbers` and
+`OutgoingCallerIds` **still return `401 Policy evaluation failed`** —
+so the original two endpoints remain blocked, and number-ownership /
+verified-caller-ID checks still can't be done programmatically.
+Practical consequences:
+- `send_lead_text` (`messages.create`) very likely works now too —
+  same family as the proven `calls.create` — but is still unverified
+  live; trial-account rules still apply (recipients must be verified
+  numbers, checkable only in the Twilio Console UI since the API
+  endpoint is blocked).
+- `TWILIO_FROM_NUMBER` ownership can't be API-confirmed; confirm in
+  the Console. Note it's stored without a leading `+` in `.env.local`
+  — Twilio generally wants E.164 (`+1...`); worth normalizing before
+  the first live `send_lead_text`.
+- Per Marc's own plan below: the diagnostic is done its job — delete
+  `supporttest.py` and rotate the Account SID/Auth Token (the token
+  sat in plaintext and was pasted into support tickets), then update
+  `.env.local`.
 Description: Marc's Twilio trial credentials (`TWILIO_ACCOUNT_SID`/
 `TWILIO_AUTH_TOKEN`) authenticate fine against the base Account
 resource (`GET /Accounts/{SID}.json` → 200, account status `active`,
