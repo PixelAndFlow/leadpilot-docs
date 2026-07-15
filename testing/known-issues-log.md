@@ -362,7 +362,18 @@ Impact: Cosmetic — a bright white modal in an otherwise dark UI.
 ## Issue 011 — Status lives in cell background colors, not text (future version)
 
 Opened: 2026-07-15 (Marc's live walkthrough)
-Status: Open — needs a design discussion before building
+Status: Partially built (2026-07-15) — legend COLORS are now read and
+displayed; row-color→status INFERENCE remains future work
+
+**Update 2026-07-15:** the first slice shipped.
+`GoogleSheetsConnector.status_legend_colors` reads the legend cells'
+background colors via gridData (bounded range), and the interface
+colors status chips + shades queue rows with them — falling back to a
+curated palette when a sheet's legend isn't distinguishing (Marc's
+demo sheets color nearly everything the same red, so the fallback is
+doing the work there). Still open from the original issue: inferring
+a lead's STATUS from its row's background color (rows with no Status
+text but a colored fill), and the both-present precedence question.
 Description: Marc's real intake sheets encode each lead's status as
 the ROW'S BACKGROUND COLOR, with a legend row (above or below the
 header row depending on the sheet) mapping colors to statuses (e.g. a
