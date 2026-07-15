@@ -168,6 +168,16 @@ background pattern picker (A13), with the artifact's accent-orb
 layer as the default and the ramp/orb/vignette depth invariant
 across all pattern choices.
 
+### A16. Click sound defaults ON — glass-tap (Marc, 2026-07-15)
+Reverses A13's sound-off default: while live-testing, Marc explicitly
+asked for "a physical and audio change when clicked" — the interface
+should be reactive. Default is now glass-tap; Off remains one click
+away in the appearance popover. Button hover/active states were also
+strengthened the same day (visible lightening on hover, a distinctly
+brighter flash on click) for the same reason. The bullpen-noise
+concern from the spec's §8 stands as a thing to revisit if reps
+complain — per-rep preference persists in localStorage either way.
+
 ## B. Implementation decisions
 
 - **htmx 1.9.12 vendored** at `static/js/htmx.min.js` — no CDN
