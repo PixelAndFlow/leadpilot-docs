@@ -92,7 +92,21 @@ client data — see compliance/README.md.
 
 Opened: 2026-07-12
 Status: Partially resolved (2026-07-15) — calls place successfully;
-the two metadata endpoints are still policy-blocked
+SMS blocked by trial policy (upgrade required); metadata endpoints
+still policy-blocked
+
+**Update 2026-07-15 (later) — SMS root cause found via live probes.**
+The only verified receiving number is +16467839391. With the correct
+recipient the earlier 422/572002 (unverified recipient) changed to
+**400/572006: "Invalid template name. Trial accounts can only use
+predefined SMS templates"** — from both owned numbers, and even for
+template-like plain text. This trial account is on Twilio's newer
+restricted regime: custom SMS bodies cannot be sent at all.
+Conclusion: `send_lead_text` (which sends rep-drafted content) cannot
+work on this account until it's **upgraded off trial** — that is the
+single unblock. Everything on LeadPilot's side (staging, gate,
+approval, client, from-number, recipient verification) is proven
+working right up to Twilio's paywall.
 
 **Update 2026-07-15 — support's diagnostic script placed a real call.**
 Marc ran `supporttest.py` and got a real call SID back
