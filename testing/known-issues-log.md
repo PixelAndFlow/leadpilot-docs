@@ -371,3 +371,34 @@ architecture/state-schema.md.
 Impact: Until built, the status baked into existing sheets' colors is
 invisible to LeadPilot — reps must populate the text Status column
 (manually or via approved LeadPilot edits) for status to flow.
+
+## Issue 012 — SSN/EIN/DOB from intake sheets stored and displayed verbatim
+
+Opened: 2026-07-15 (spotted while mapping Marc's fuller intake sheets)
+Status: Open — must be resolved as part of the Step 5 compliance/
+security review, before real-lead launch
+Description: Marc's fuller intake sheets carry `SSN`, `EIN`, and `DOB`
+columns (plus home addresses). Ingestion stores every source column
+verbatim in `lead_source_rows.raw_data` (JSONB, unencrypted — unlike
+rep OAuth tokens, which are Fernet-encrypted per Decision 029), and
+the interface's Source data panel displays the full row to any
+authenticated rep. So the moment a sheet with an SSN column is
+granted, LeadPilot is persisting and displaying government
+identifiers with no special handling: no field-level encryption, no
+masking, no access differentiation, no retention policy, and the
+values also flow into whatever the agent loop reads
+(`LeadSourceRow.raw_data` is documented as internal-only for
+change-detection, but the Source data panel now surfaces it, and
+raw rows reach model context via tool results during agent runs).
+Questions to resolve (Step 5, alongside Issue 004's
+search_communications review):
+- Should PII-pattern columns (SSN/EIN/DOB) be masked in the UI by
+  default (e.g. •••-••-1234 with click-to-reveal + audit log)?
+- Should raw_data be field-level encrypted at rest, or PII columns
+  dropped/tokenized at ingest?
+- Should these columns be excluded from tool results the model sees
+  during agent runs (the agent has no need for an SSN)?
+- Retention: what happens to raw_data when a lead goes dead?
+Impact: Compliance exposure (GLBA-adjacent for business-lending data;
+state privacy laws for SSN handling) and breach blast radius. Doesn't
+block local testing with sample data; blocks real-lead launch.
