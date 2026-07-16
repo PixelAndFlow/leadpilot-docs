@@ -87,12 +87,15 @@ when an item resolves; update this file's status alongside them.
 
 ## Tier 2 — UX polish (worth doing, meaningfully improves how it reads to an audience)
 
-- **Rank pills (R1/R2/R3) have no tooltip explaining what they mean.**
-  An audience seeing a bare "R2" with no explanation reads as
-  confusing (this came up earlier in review). Cheap, high-value fix:
-  add a `title` attribute to the rank pill the same way the pipeline-
-  status badge next to it already has one — reuse `rank_reason`, which
-  every queue item already carries, as the tooltip text.
+- ~~**Rank pills (R1/R2/R3) have no tooltip explaining what they
+  mean.**~~ — **fixed 2026-07-16.** Added a `title="{{ item.rank_reason
+  }}"` attribute to the `.rank-pill` span in
+  `templates/partials/queue_list.html`, same pattern as the
+  `handoff-badge`'s existing `title`. (`lead_center.html`'s rank pill
+  wasn't touched — that pane already shows `rank_reason` as visible
+  text right below it, so a hover tooltip there would be redundant.)
+  Full test suite unaffected (34/34 `test_ui.py` passing; no test
+  asserted the pill's exact markup).
 - Stale-write conflict panel says "editor identity isn't available"
   rather than naming who changed a cell (build-decisions A7) — minor;
   only worth polishing if a stale-write demo path is actually planned.
