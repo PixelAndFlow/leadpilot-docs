@@ -13,6 +13,10 @@ handoff, and pushes structured execution logs to a rep-facing dashboard.
 
 Owners: Marc Delsoin, Abdoul Ba
 
+See [`OUTSTANDING-ITEMS.md`](OUTSTANDING-ITEMS.md) for the current
+cross-repo backlog — every unresolved decision, open issue, and
+deferred item, grouped by priority and what belongs together.
+
 ## Why two repos
 
 `leadpilot` (code) and `leadpilot-docs` (this repo) are intentionally

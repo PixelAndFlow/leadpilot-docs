@@ -150,6 +150,15 @@ urgency never bypasses the gate. All must pass — confirm that closing
 the interface without approving never results in a tool call, for any
 of the gated tools.
 
+**Update (Decision 038, 2026-07-15 security review):** also checked
+whether a manipulated input could expand `dispatch_slack_handoff`'s
+recipient list beyond the 3 named stakeholders (previously listed
+below under "not yet covered"). Confirmed directly in both the tool
+signature and `agent_loop.py`'s call site: channel targeting is
+structurally hardcoded from an env var, with no parameter path for any
+caller — including the agent itself — to influence it. Not a gap;
+moved out of the open-threats list below.
+
 ## Fifth threat: unauthorized agent access (new in v1.01)
 
 **Scenario:** A request to run the agent, view a lead's data, or
@@ -240,12 +249,6 @@ consequence this triggers.
 - **Credential compromise** — what happens if the Google/Slack API
   keys are leaked? See secrets-rotation-runbook.md — needs an actual
   incident procedure, not just a rotation cadence.
-- **Over-broad Slack handoff targeting** — what stops a manipulated
-  input from expanding the handoff recipient list beyond the 3 named
-  stakeholders? The PRD names "the 3 defined back-office team member
-  accounts" as static, but the implementation needs to hard-code or
-  strictly validate this list, not derive it from any user-influenced
-  input.
 - **Multi-tenant data bleed** — if LeadPilot is ever sold to more than
   one sales org, what prevents one org's lead data or contact history
   from being visible to another? Not a Phase 1 concern per the PRD,

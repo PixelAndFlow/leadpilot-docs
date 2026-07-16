@@ -64,7 +64,9 @@ it whenever a component is added, swapped, or upgraded.
   differences masking a real bug.
 - Schema: see `architecture/state-schema.md` for the contact-history
   log table (which also carries the approval-gate `stage` field) and
-  the still-unbuilt dedup/run-lock table.
+  the dedup/run-lock tables (`lead_source_rows`, `lead_action_locks`,
+  `agent_run_locks` — built Step 1, Decision 025; `agent_run_locks`
+  reworked to a per-rep mutex in Step 2, Decision 027/032).
 
 ## Scheduler
 
@@ -75,10 +77,10 @@ it whenever a component is added, swapped, or upgraded.
   shared sheet list. Still no task queue (Celery/RQ) and no persistent
   worker process; at one sales org's rep count and one run per hour,
   a simple in-process loop within the same Cron Job invocation is
-  enough. `agent_run_locks` (Decision 025) needs to move from a
-  singleton mutex to a per-rep mutex to match — flagged in
-  architecture/state-schema.md, not yet built. Separate from the
-  always-on Web Service; see the two-service split above.
+  enough. `agent_run_locks` (Decision 025) moved from a singleton mutex
+  to a per-rep mutex to match (Decision 027/032, built Step 2) —
+  `architecture/state-schema.md` has the current schema. Separate from
+  the always-on Web Service; see the two-service split above.
 
 ## External integrations
 
@@ -131,20 +133,15 @@ it whenever a component is added, swapped, or upgraded.
 
 ## Known gaps / not yet decided
 
-- Concurrency test for the Decision 021 conditional update — now
-  unblocked (Postgres is chosen), still needs to be written.
-- Per-rep `agent_run_locks` mutex schema (Decision 027) — the existing
-  singleton-mutex design (Decision 025) needs to change, not yet done.
-- `rep_google_credentials` table design, including the encryption-at-
-  rest approach for stored refresh tokens (Decision 026) — shape
-  sketched in `architecture/state-schema.md`, not finalized.
-- Rework of the Step-1-built `GoogleSheetsConnector` from a shared
-  service-account instance to a per-rep-authenticated one (Decision
-  026) — real code change, not yet done; see `mvp/README.md` Step 2.
-- Secrets management — where each rep's OAuth refresh token (Decision
-  026), the OAuth client secret (Sheets/Drive/Gmail), the Google
-  Picker API key, the Twilio/Slack keys, and the Neon connection
-  string actually live (Render's env var/secrets store is the default
-  assumption for the static secrets; per-rep refresh tokens live in
-  Postgres, not an env var, and need their own encryption approach —
-  not yet confirmed).
+Updated 2026-07-16 — the four items this section used to list as open
+(concurrency test, per-rep mutex schema, `rep_google_credentials`
+table, `GoogleSheetsConnector` rework) were all resolved in Step 1/Step
+2 and are removed below; see `decisions/README.md` Decisions 021, 025,
+026, 027, 029, 032 and `mvp/README.md`'s Step 1/2 checklists for the
+verified detail. One item remains genuinely open:
+
+- Secrets management — the default assumption (Render env vars for
+  static secrets; per-rep OAuth refresh tokens in Postgres, Fernet-
+  encrypted per Decision 029) is implemented, but no runbook states
+  this is the final, confirmed answer for production rather than a
+  placeholder. See `OUTSTANDING-ITEMS.md` Tier 3.
