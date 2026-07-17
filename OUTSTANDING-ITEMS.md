@@ -50,15 +50,77 @@ when an item resolves; update this file's status alongside them.
    the demo so it doesn't attempt a live text send (e.g. narrate the
    drafted text and approval flow without clicking through to the
    actual Twilio call). Don't find out live on stage.
-4. **Group B tools have never been run through a live, OAuth-connected
-   round trip.** `send_lead_email`, `dispatch_slack_handoff`,
-   `search_communications`, `initiate_lead_call`, and `send_lead_text`
-   are unit-tested against fakes only — only Group A's tools
-   (`fetch_all_leads`, `update_lead_sheet`, `verify_drive_contents`,
-   `fetch_ad_hoc_sheet`) have a proven live end-to-end pass. Do one
-   full live click-through of every approve button — call, text,
-   email, Slack handoff, search — before presenting, so nothing
-   surprises you in front of an audience.
+4. **Group B tools: live click-through done via the real HTTP endpoints
+   (2026-07-16), not just narrated — three real bugs found and fixed
+   along the way, two more confirmed working, two still need Marc
+   personally.**
+   - ~~`initiate_lead_call`~~ — **verified live, works perfectly.** No
+     external dependency (Decision 016, clipboard-only), so nothing to
+     block it. Approved via `POST /ui/actions/{event_id}/approve`:
+     clipboard-copy confirmation, outcome-logging row, and
+     contact-history rail all rendered correctly in one response.
+   - ~~**Bug: `slack_sdk` wasn't installed in the dev venv**~~ — **fixed.**
+     Declared in `requirements.txt` but missing from `.venv`
+     (`ImportError: No module named 'slack_sdk'` on approval). Ran
+     `pip install -r requirements.txt` to resync the venv (also
+     corrected an over-installed `twilio` version back to the pinned
+     9.3.7). Full suite reconfirmed clean after: 294 passed, 11
+     skipped, 0 failed.
+   - ~~**Bug: vendor-SDK exceptions could render raw ANSI escape codes
+     into the page**~~ — **fixed.** Approving a text draft against the
+     real Twilio API surfaced `TwilioRestException`'s `__str__`, which
+     colorizes *specifically when `sys.stderr.isatty()` is true* — true
+     for a dev server launched directly in a terminal, exactly how
+     `uvicorn ... --reload` is normally started per this repo's own
+     setup instructions. A live audience would see literal escape-code
+     garbage in the error card. Added `_clean_error()` (`ui.py`,
+     strips `\x1b[...m` sequences) and applied it at all 6 places an
+     exception reaches rendered text (sync, docs-read, sheet-staging,
+     ad hoc read, search, and this execute-failure path). Verified the
+     regex directly against a forced-colorized `TwilioRestException`.
+   - ~~**Bug: `dispatch_slack_handoff` could silently no-op and still
+     claim success**~~ — **fixed.** With `slack_sdk` present but
+     `SLACK_HANDOFF_CHANNEL_IDS` empty, approving a staged handoff
+     returned `"Posted to 0 of 0 stakeholder channels."` styled as
+     **success** (`card-status ok`) — `execute_dispatch_slack_handoff`
+     only trusted staging's channel check, never re-validated at
+     execute time. Root cause: `seed_demo_data.py` stages drafts under
+     an in-process settings override, but the real server process
+     reads `SLACK_HANDOFF_CHANNEL_IDS` fresh from `.env.local` — so a
+     draft staged with channels "configured" can be approved in a
+     process where they're genuinely empty. Fixed in
+     `dispatch_slack_handoff.py`: re-check `_channel_ids()` *before*
+     calling `gate.try_execute()`, same category as the existing
+     config-failure precedent (Decision A2) — raises, leaves the row
+     `APPROVED` (not consumed), so it's re-approvable once real
+     credentials exist rather than lying about having sent anything.
+     Added a regression test
+     (`test_execute_raises_if_channels_emptied_after_staging`).
+     Live-reproduced the fix too: fresh approval now shows a clean
+     `card-status err` with the exact config message, row stays
+     `approved`.
+   - ~~`send_lead_email`~~ — **failure path verified clean.** No
+     connected Google account for the demo rep → a clear, ANSI-free
+     error (`"...has not connected a Google account...cannot send from
+     their Gmail"`), row stays `APPROVED`. This confirms the *failure*
+     path; a real successful send still needs a live Gmail send, which
+     needs Marc's own OAuth click-through — see below.
+   - **Still blocked on Marc, not further engineering:**
+     - `dispatch_slack_handoff` succeeding for real needs a genuine
+       `SLACK_BOT_TOKEN` and at least one real channel ID in
+       `.env.local` — both currently empty. Marc has these from Step 0
+       (the `LeadPilot` Slack app, `chat:write` scope, installed to the
+       workspace).
+     - `send_lead_email` and `search_communications` succeeding for
+       real need a rep with a live "Connect Google Account" OAuth
+       grant — this requires clicking through Google's real consent
+       screen in a browser, which only Marc can do as himself. I
+       cannot authenticate as him. Once done, both tools' happy paths
+       are the last unverified piece.
+     - `send_lead_text` succeeding for real is still blocked on the
+       Twilio trial restriction — see item 3 above, unchanged by this
+       investigation (reproduced the same failure again, now rendered
+       cleanly instead of ANSI-garbled).
 5. **Known UX bugs from Marc's live walkthrough that directly affect
    what a demo can show** (all still open, all "future version" —
    grouped since they share a root cause: Google Drive/Picker
