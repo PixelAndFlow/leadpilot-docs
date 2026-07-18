@@ -1,0 +1,51 @@
+Here's the command, run from the repo root:
+  
+  cd /Users/techno/SynologyDrive/coding/repositories/LeadPilot
+  uvicorn leadpilot.app:app --app-dir src --port 8000
+
+  That runs it in the foreground in your terminal (Ctrl+C stops it — handy for watching the logs directly).
+
+  Two variations worth knowing:
+
+  If the old process is wedged (port already in use), kill it first:
+  pkill -f "uvicorn leadpilot.app"; sleep 1
+  uvicorn leadpilot.app:app --app-dir src --port 8000
+
+  With auto-reload (picks up code/template changes without restarting — good while we're iterating):
+  uvicorn leadpilot.app:app --app-dir src --port 8000 --reload
+
+  Prerequisites if it's a fresh boot: the venv must be active (source .venv/bin/activate — or however you normally activate it)
+  and the dev database running (scripts/devdb.sh start). Port 8000 specifically matters — the Google Picker API key is
+  referrer-locked to localhost:8000.
+
+  You can also run it from inside this session anytime by typing ! pkill -f uvicorn; uvicorn leadpilot.app:app --app-dir src 
+  --port 8000 — or just ask me to restart it.
+
+http://localhost:8000 to reach app — must be localhost, not 127.0.0.1:
+both the Google OAuth redirect URI and the Picker API key's referrer
+restriction are locked to localhost:8000, and browsers treat
+127.0.0.1 as a different origin for cookies. Logging in on one and
+hitting the Google OAuth callback on the other loses your session
+mid-flow ("Not authenticated").
+
+
+On restart type this for database:
+Yes, database first. The good news: devdb.sh start is safe to run even when the DB is already up (it just prints "Already running." and
+  exits cleanly), so you can chain the two into one command and use it every time:
+
+  scripts/devdb.sh start && .venv/bin/uvicorn leadpilot.app:app --reload --app-dir src
+
+  Run it from the repo root. I used .venv/bin/uvicorn directly so it works whether or not you've activated the virtualenv — if you prefer
+  activating first, this is equivalent:
+
+# create a virtual environment
+  python -m venv .venv
+
+  # activate it
+  source .venv/bin/activate
+  scripts/devdb.sh start && uvicorn leadpilot.app:app --reload --app-dir src
+
+  One note on ordering: strictly speaking uvicorn will start fine without the DB (connections are made per-request, which is why you got a
+  500 page rather than a startup crash), so the && isn't load-bearing — but starting the DB first means the first page you load actually
+  works. When you're done, the DB keeps running in the background; scripts/devdb.sh stop shuts it down, or just leave it — it survives
+  until reboot/sleep, which is why it was down tonight.
