@@ -158,6 +158,27 @@ when an item resolves; update this file's status alongside them.
   text right below it, so a hover tooltip there would be redundant.)
   Full test suite unaffected (34/34 `test_ui.py` passing; no test
   asserted the pill's exact markup).
+- ~~**Contact history timeline only showed relative "2h ago" text, no
+  absolute date/time.**~~ — **fixed 2026-07-18.** `queue_builder.describe_event`
+  now also returns `when_absolute` (`"%b %d, %Y %I:%M %p UTC"`, same
+  format `ui.py`'s injection-alert panel already used), rendered in
+  `rail.html` as `{{ e.when_absolute }} ({{ e.when }})`. Relative-only
+  "ago" text is unchanged everywhere else (queue cards, unlogged-calls
+  strip) — those are about triage freshness, not a historical record.
+- ~~**Email history showed the raw `delivered` outcome label, which
+  overstates what Gmail's send API actually confirms — and gave no
+  durable signal that a rejected/expired draft was never sent.**~~ —
+  **fixed 2026-07-18.** `describe_event` now derives an `email_status`
+  scoped to `send_lead_email` only: `draft` for every not-yet-sent
+  stage (drafted/awaiting_rep_approval/approved, and deliberately also
+  rejected/expired — the point is a durable "still needs finishing"
+  reminder in history), `sent` replacing `delivered` once executed
+  successfully, `failed` unchanged. Other channels' stage/outcome
+  display in `rail.html` is untouched. Full `test_ui.py` suite
+  reconfirmed clean after (38/38; the two count-based pending-badge
+  tests that looked broken first were pre-existing demo-seed-data
+  pollution per this file's own `--wipe`-before-pytest note, not a
+  regression).
 - Stale-write conflict panel says "editor identity isn't available"
   rather than naming who changed a cell (build-decisions A7) — minor;
   only worth polishing if a stale-write demo path is actually planned.
